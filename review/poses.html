@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>지상훈련 동작 그림 확인</title>
+  <style>
+    :root { --bg:#f6f7fb; --surface:#ffffff; --surface2:#eef0f7; --text:#14161f; --muted:#5b6070; --line:#d9dce6; --accent:#4f46e5; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif; }
+    header { padding: 20px 16px 8px; }
+    h1 { font-size: 22px; margin: 0 0 8px; }
+    .how { background: var(--surface); border-radius: 14px; padding: 12px 14px; font-size: 15px; }
+    .how b { color: var(--accent); }
+    .cat { margin: 22px 16px 8px; font-size: 19px; font-weight: 800; }
+    .list { display: grid; grid-template-columns: 1fr; gap: 12px; padding: 0 16px 24px; }
+    @media (min-width: 700px) { .list { grid-template-columns: 1fr 1fr; } }
+    .card { background: var(--surface); border-radius: 16px; padding: 12px; break-inside: avoid; page-break-inside: avoid; }
+    .top { display: flex; align-items: baseline; gap: 8px; }
+    .no { font-size: 22px; font-weight: 900; color: var(--accent); min-width: 2.2em; }
+    .name { font-size: 18px; font-weight: 800; }
+    .live { position: relative; width: 100%; max-width: 260px; aspect-ratio: 1; display: block; margin: 6px auto; background: var(--surface2); border-radius: 12px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .live .host { position: absolute; inset: 0; }
+    .live .badge { position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); white-space: nowrap; background: var(--accent); color: #fff; font-weight: 800; font-size: 14px; padding: 6px 12px; border-radius: 999px; box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+    .live.playing { outline: 3px solid var(--accent); }
+    .live.playing .badge { background: #14161f; }
+    .frames > div { border-radius: 10px; padding: 2px; border: 3px solid transparent; }
+    .frames > div.on { border-color: var(--accent); }
+    .frames { display: flex; gap: 4px; justify-content: center; }
+    .frames svg { width: 72px; height: 72px; background: var(--surface2); border-radius: 8px; }
+    .frames .lab { font-size: 11px; color: var(--muted); text-align: center; }
+    .cp { margin: 8px 0 0; padding-left: 0; list-style: none; font-size: 15px; }
+    .cp li { margin: 2px 0; }
+    .note { color: var(--muted); font-size: 13px; margin-top: 4px; }
+    footer { padding: 8px 16px 40px; color: var(--muted); font-size: 13px; }
+    @media screen { .frames.single { display: none; } }
+    @media print {
+      body { background: #fff; font-size: 12px; }
+      .live { display: none; }
+      .frames svg { width: 92px; height: 92px; }
+      .list { grid-template-columns: 1fr 1fr; gap: 8px; }
+      .card { border: 1px solid var(--line); }
+      .cat { page-break-after: avoid; }
+    }
+  </style>
+</head>
+<body>
+<header>
+  <h1>⛸ 지상훈련 동작 그림 확인</h1>
+  <div class="how">
+    아이패드 앱에서 보여 줄 <b>동작 그림</b>이에요. 큰 그림을 <b>누르면 천천히 움직이고</b>, 다시 누르면 멈춰요. 움직이는 동안 아래 작은 그림에 지금 단계가 표시돼요.<br>
+    진한 쪽 팔다리가 <b>가까운 쪽</b>, 흐린 쪽이 먼 쪽이에요.<br>
+    자세·각도가 이상하거나 체크포인트 문구를 바꾸고 싶으면 <b>카드 번호</b>와 고칠 점만 알려 주세요. (예: "14번 무릎을 더 굽혀야 해요")
+  </div>
+</header>
+<main id="main"></main>
+<footer>그림은 각도를 계산해 그린 근사치예요. 코치님 의견이 가장 정확해요 🙏</footer>
+<script type="module">
+import { POSES, framesOf, propsOf } from '../src/data/poses.js';
+import { EXERCISES } from '../src/data/exercises.js';
+import { poseSvg, createStickman, STICKMAN_CSS } from '../src/ui/components/stickman.js';
+
+const st = document.createElement('style'); st.textContent = STICKMAN_CSS; document.head.append(st);
+const CAT = [['warmup', '🔥 웜업'], ['jump', '🦘 점프 탄력'], ['spin', '🌀 스핀 코어'], ['balance', '🦩 한발 밸런스'], ['flex', '🤸 유연성'], ['cooldown', '🌙 쿨다운']];
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const main = document.getElementById('main');
+const seen = new Set();
+let no = 0;
+
+for (const [cat, label] of CAT) {
+  const exs = EXERCISES.filter(e => e.category === cat && !seen.has(e.poseId));
+  if (!exs.length) continue;
+  main.insertAdjacentHTML('beforeend', `<div class="cat">${label}</div><div class="list" data-cat="${cat}"></div>`);
+  const list = main.querySelector(`[data-cat="${cat}"]`);
+  for (const e of exs) {
+    seen.add(e.poseId);
+    no++;
+    const pose = POSES[e.poseId];
+    const users = EXERCISES.filter(x => x.poseId === e.poseId);
+    const frames = framesOf(pose);
+    // 한 장짜리 자세도 인쇄(PDF)에선 보이게 — 화면에선 큰 움직이는 그림이 대신함
+    const frameSvgs = `<div class="frames${frames.length > 1 ? '' : ' single'}">${frames.map((f, i) => `<div><svg viewBox="0 0 240 240">${poseSvg(f, propsOf(pose))}</svg><div class="lab">${frames.length > 1 ? `${i + 1}단계` : '자세'}</div></div>`).join('')}</div>`;
+    list.insertAdjacentHTML('beforeend', `<div class="card">
+      <div class="top"><div class="no">${no}</div><div class="name">${users.map(u => esc(u.name)).join(' / ')}</div></div>
+      <div class="live" data-pose="${e.poseId}" data-multi="${frames.length > 1}" role="button" aria-label="${esc(users[0].name)} 천천히 보기">
+        <div class="host"></div>${frames.length > 1 ? '<div class="badge">▶ 눌러서 천천히 보기</div>' : ''}</div>
+      ${frameSvgs}
+      <ol class="cp">${e.checkpoints.map((c, i) => `<li>${'①②③'[i]} ${esc(c)}</li>`).join('')}</ol>
+      ${e.caution ? `<div class="note">⚠ ${esc(e.caution)}</div>` : ''}
+    </div>`);
+  }
+}
+
+// 평소엔 멈춘 그림(1단계). 누르면 천천히(2.5배 느리게, 단계마다 잠깐 멈춤) — 한 번에 한 카드만.
+const SLOW = 2.5;
+let playing = null;
+function stopBox(box) {
+  if (!box) return;
+  box._sm.show(box.dataset.pose, { still: true, onStep: i => markStep(box, i) });
+  box.classList.remove('playing');
+  const b = box.querySelector('.badge'); if (b) b.textContent = '▶ 눌러서 천천히 보기';
+  if (playing === box) playing = null;
+}
+function markStep(box, i) {
+  box.parentElement.querySelectorAll('.frames > div').forEach((d, k) => d.classList.toggle('on', k === i && box.classList.contains('playing')));
+}
+for (const box of document.querySelectorAll('.live')) {
+  box._sm = createStickman(box.querySelector('.host'), { reduceMotion: false });
+  box._sm.show(box.dataset.pose, { still: true });
+  if (box.dataset.multi !== 'true') continue;
+  box.addEventListener('click', () => {
+    if (playing === box) { stopBox(box); return; }
+    stopBox(playing);
+    playing = box;
+    box.classList.add('playing');
+    box.querySelector('.badge').textContent = '⏸ 멈추기';
+    box._sm.show(box.dataset.pose, { slow: SLOW, onStep: i => markStep(box, i) });
+  });
+}
+// 화면 밖으로 스크롤하면 멈춤 (폰 배터리)
+const io = new IntersectionObserver(es => {
+  for (const e of es) {
+    if (e.isIntersecting) e.target._seen = true;
+    else if (e.target._seen && e.target === playing) stopBox(e.target);
+  }
+});
+document.querySelectorAll('.live').forEach(b => io.observe(b));
+document.title = `지상훈련 동작 그림 확인 (${no}개)`;
+</script>
+</body>
+</html>
