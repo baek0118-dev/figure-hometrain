@@ -138,7 +138,11 @@ export function mountPlayer(el, { store, repo, audio, wake, media, today, speed 
       $('nudge').style.opacity = '0';
     }
     $('bar').style.width = `${(st.progress * 100).toFixed(1)}%`;
-    const itemNo = s.block === 'main' ? `${new Set(steps.filter(x => x.block === 'main' && x.itemIndex <= s.itemIndex).map(x => x.itemIndex)).size}/${new Set(steps.filter(x => x.block === 'main').map(x => x.itemIndex)).size} 동작` : (s.block === 'warmup' ? '웜업' : '쿨다운');
+    // 지금 위치 + 다음 순서: 🔥 웜업 2/6 → 본운동 12개 → 쿨다운 / 💪 본운동 3/12 / 🌙 쿨다운 1/7
+    const count = blk => new Set(steps.filter(x => x.block === blk).map(x => x.itemIndex)).size;
+    const nth = blk => new Set(steps.filter(x => x.block === blk && x.itemIndex <= s.itemIndex).map(x => x.itemIndex)).size;
+    const itemNo = s.block === 'warmup' ? `🔥 웜업 ${nth('warmup')}/${count('warmup')} → 본운동 ${count('main')}개 → 쿨다운`
+      : s.block === 'main' ? `💪 본운동 ${nth('main')}/${count('main')}` : `🌙 쿨다운 ${nth('cooldown')}/${count('cooldown')}`;
     const leftMin = Math.max(0, Math.round((1 - st.progress) * total() / 60));
     $('where').textContent = `${itemNo} · 약 ${leftMin}분 남음`;
     if (bannerUntil && performance.now() > bannerUntil) { $('banner').classList.add('hidden'); bannerUntil = 0; }
