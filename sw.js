@@ -52,7 +52,8 @@ const FILES = [
 const CACHE = `yuha-${VERSION}`;
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)));
+  // cache:'reload' — 브라우저 HTTP 캐시(GitHub Pages 10분)에 남은 옛 파일을 새 버전에 담지 않게
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES.map(f => new Request(f, { cache: 'reload' })))));
 });
 
 self.addEventListener('activate', e => {
