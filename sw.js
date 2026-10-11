@@ -1,6 +1,6 @@
 // 서비스 워커 — 설계 §1.1, §3.1. 앱 파일 전부를 미리 저장(오프라인: 공원·놀이터), 같은 주소 요청은 캐시 먼저.
 // FILES·VERSION 은 tools/update-sw.mjs 가 채운다. 새 버전은 기다렸다가 앱이 "새로고침"을 보내면 바뀐다.
-const VERSION = 'v-6f2cb7de5051';
+const VERSION = 'v-73a07fddb1c9';
 const FILES = [
   "./",
   "index.html",

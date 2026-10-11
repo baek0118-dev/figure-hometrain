@@ -56,6 +56,9 @@ export const STICKMAN_CSS = `
   .sm-spin { fill: none; stroke: var(--accent); stroke-width: 4; }
   .sm-spin-head { fill: var(--accent); }`;
 
+// rAF 대신 타이머(약 30fps): 카톡 등 앱 안 브라우저·절전 모드에서 rAF 가 멈추는 경우 대비 (플레이어와 같은 이유)
+const FRAME_MS = 33;
+
 const ease = t => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
 
 // container 에 svg 를 만들고 움직인다. 화면을 떠나면 stop() 으로 멈춘다.
@@ -81,7 +84,8 @@ export function createStickman(container, { reduceMotion = globalThis.matchMedia
     const hold = slow > 1 ? 0.4 : 0;   // 느리게 볼 땐 각 자세에서 40% 동안 멈춤
     const t0 = performance.now();
     let lastStep = 0;
-    const loop = now => {
+    const loop = () => {
+      const now = performance.now();
       const pos = ((now - t0) / ms) % frames.length;
       const i = Math.floor(pos);
       const a = frames[i], b = frames[(i + 1) % frames.length];
@@ -89,12 +93,12 @@ export function createStickman(container, { reduceMotion = globalThis.matchMedia
       draw(lerpPose(a, b, ease(t)), props);
       const step = t > 0.5 ? (i + 1) % frames.length : i;
       if (step !== lastStep) { lastStep = step; onStep?.(step); }
-      raf = requestAnimationFrame(loop);
+      raf = setTimeout(loop, FRAME_MS);
     };
-    raf = requestAnimationFrame(loop);
+    raf = setTimeout(loop, 0);
   }
 
-  function stop() { if (raf) cancelAnimationFrame(raf); raf = null; }
+  function stop() { if (raf) clearTimeout(raf); raf = null; }
 
   return { show, stop, svg };
 }
