@@ -1,8 +1,8 @@
-// 코드로 만든 3D 인형 — 모델 파일이 없거나 못 읽을 때의 대체, 그리고 리그 시험용. 쉬는 자세 = T 자세.
+// 코드로 만든 3D 인형 — 시험판의 기본 모습(사용자 결정 2026-10-12: 사람형보다 몰입감이 낫다). 쉬는 자세 = T 자세.
 // 좌표: +Y 위, 정면 +Z, 캐릭터 오른쪽 = -X. 뼈 이름은 rig.js 의 BONES(VRM 이름).
 import * as THREE from 'three';
 
-const SKIN = 0xf5c4b3, BODY = 0xd4537e, HAIR = 0x444441;
+const SKIN = 0xf5c4b3, BODY = 0xd4537e, HAIR = 0x444441, SHOE_R = 0xd85a30, SHOE_L = 0x1d9e75;
 
 export function createMannequin({ height = 1.4 } = {}) {
   const k = height / 1.4;
@@ -40,8 +40,9 @@ export function createMannequin({ height = 1.4 } = {}) {
     seg(bones[`${s}LowerArm`], [sx * 0.22, 0, 0], 0.03, SKIN);
     seg(bones[`${s}UpperLeg`], [0, -0.36, 0], 0.05, BODY);
     seg(bones[`${s}LowerLeg`], [0, -0.35, 0], 0.04, SKIN);
-    const foot = new THREE.Mesh(new THREE.BoxGeometry(0.07 * k, 0.05 * k, 0.17 * k), mat(0x2c2c2a));
-    foot.position.set(0, -0.015 * k, 0.05 * k); bones[`${s}Foot`].add(foot);
+    // 신발: 작게(발이 커 보인다는 의견 2026-10-12), 좌우 색 = 오른발 주황·왼발 초록(발목 공 대신)
+    const foot = new THREE.Mesh(new THREE.BoxGeometry(0.055 * k, 0.04 * k, 0.12 * k), mat(s === 'right' ? SHOE_R : SHOE_L));
+    foot.position.set(0, -0.02 * k, 0.035 * k); bones[`${s}Foot`].add(foot);
     const hand = new THREE.Mesh(new THREE.SphereGeometry(0.035 * k, 12, 10), mat(SKIN)); bones[`${s}Hand`].add(hand);
   }
   const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.12 * k, 0.14 * k, 0.4 * k, 18), mat(BODY));

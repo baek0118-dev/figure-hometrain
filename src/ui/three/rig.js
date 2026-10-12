@@ -6,41 +6,6 @@ import { poseDirs } from '../../domain/pose3d.js';
 
 export const BONES = ['hips', 'spine', 'chest', 'neck', 'head',
   ...['right', 'left'].flatMap(s => [`${s}UpperArm`, `${s}LowerArm`, `${s}Hand`, `${s}UpperLeg`, `${s}LowerLeg`, `${s}Foot`, `${s}Toes`])];
-const OPTIONAL = new Set(['spine', 'neck', 'rightToes', 'leftToes']);
-
-// 이름 비교: 접두어(mixamorig:, DEF-, ORG-) 떼고 소문자·영숫자만
-const norm = n => n.replace(/^(mixamorig\d*:|DEF-|ORG-)/i, '').toLowerCase().replace(/[^a-z0-9]/g, '');
-const SIDE = { right: ['right', 'r'], left: ['left', 'l'] };
-const CANDS = {
-  hips: ['hips', 'pelvis', 'hip'],
-  spine: ['spine', 'spine01'],
-  chest: ['chest', 'spine1', 'spine02', 'spine001', 'spine2', 'spine03', 'upperchest'],
-  neck: ['neck', 'neck01'],
-  head: ['head'],
-};
-const LIMB_CANDS = {
-  UpperArm: s => [`${s[0]}arm`, `${s[0]}upperarm`, `upperarm${s[1]}`, `${s[1]}upperarm`, `arm${s[1]}`],
-  LowerArm: s => [`${s[0]}forearm`, `${s[0]}lowerarm`, `lowerarm${s[1]}`, `forearm${s[1]}`, `${s[1]}forearm`],
-  Hand: s => [`${s[0]}hand`, `hand${s[1]}`, `${s[1]}hand`],
-  UpperLeg: s => [`${s[0]}upleg`, `${s[0]}upperleg`, `thigh${s[1]}`, `${s[1]}thigh`, `upperleg${s[1]}`],
-  LowerLeg: s => [`${s[0]}leg`, `${s[0]}lowerleg`, `calf${s[1]}`, `shin${s[1]}`, `${s[1]}calf`, `lowerleg${s[1]}`],
-  Foot: s => [`${s[0]}foot`, `foot${s[1]}`, `${s[1]}foot`],
-  Toes: s => [`${s[0]}toebase`, `${s[0]}toes`, `ball${s[1]}`, `toe${s[1]}`, `toes${s[1]}`, `${s[1]}toe`],
-};
-
-export function guessBoneMap(names) {
-  const byNorm = new Map();
-  for (const n of names) if (!byNorm.has(norm(n))) byNorm.set(norm(n), n);
-  const pick = cands => cands.map(c => byNorm.get(c)).find(Boolean);
-  const map = {};
-  for (const [k, c] of Object.entries(CANDS)) { const f = pick(c); if (f) map[k] = f; }
-  for (const [side, s] of Object.entries(SIDE)) {
-    for (const [part, c] of Object.entries(LIMB_CANDS)) { const f = pick(c(s)); if (f) map[`${side}${part}`] = f; }
-  }
-  const missing = BONES.filter(b => !map[b] && !OPTIONAL.has(b));
-  return { map, missing };
-}
-
 // [뼈, 방향의 끝 뼈, 목표 고르기]. 끝 뼈가 없으면(발가락) 쉬는 자세 방향 = 앞(+Z).
 const SEGS = [
   ['rightUpperArm', 'rightLowerArm', d => d.armR.upper], ['rightLowerArm', 'rightHand', d => d.armR.fore],
@@ -123,18 +88,4 @@ export function createRig(root, boneOf) {
   }
 
   return { apply, height, sole, bones };
-}
-
-// 좌우 표시: 발목에 오른쪽 주황·왼쪽 초록 공(양말 대신)
-export function addFootMarkers(rig, boneOf, { R = 0xd85a30, L = 0x1d9e75 } = {}) {
-  const r = rig.height * 0.04;
-  for (const [name, color] of [['rightFoot', R], ['leftFoot', L]]) {
-    const node = boneOf(name);
-    if (!node) continue;
-    const m = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 12), new THREE.MeshToonMaterial({ color }));
-    const s = new THREE.Vector3(); node.getWorldScale(s);
-    m.scale.setScalar(r / s.x);
-    m.name = `marker-${name}`;
-    node.add(m);
-  }
 }

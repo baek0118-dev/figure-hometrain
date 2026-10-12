@@ -2,7 +2,7 @@
 // rAF 대신 타이머(스틱맨과 같은 이유). 탭이 숨으면 멈추고 돌아오면 이어서.
 import * as THREE from 'three';
 import { OutlineEffect } from 'three/addons/effects/OutlineEffect.js';
-import { createRig, addFootMarkers } from './rig.js';
+import { createRig } from './rig.js';
 import { playhead, splinePose3 } from '../../domain/pose3d.js';
 
 const FRAME_MS = 16; // 약 60fps — 느리게 볼 때도 매끄럽게(타이머라 기기가 느리면 저절로 덜 그림)
@@ -13,17 +13,13 @@ const THEMES = {
 };
 const CAMERA_DEG = { side: -90, front: 0, diag: -45 }; // 위에서 봐서 캐릭터 정면(+Z)에서 몇 도 — 음수 = 캐릭터 오른쪽
 
-// 프레임 사이 시간(초): 탭에서 오래 숨었다 돌아와도 0.1초를 넘지 않게(VRM 스프링 뼈가 튀지 않게)
+// 프레임 사이 시간(초): 탭에서 오래 숨었다 돌아와도 0.1초를 넘지 않게
 export const frameDt = (now, last) => Math.round(Math.min(0.1, Math.max(0, (now - last) / 1000)) * 1000) / 1000;
 
-// 모델마다 리그·좌우 표시는 한 번만 만든다(다시 고른 모델은 이미 자세가 들어가 있어 쉬는 자세를 다시 잴 수 없음)
+// 모델마다 리그는 한 번만 만든다(이미 자세가 들어간 모델로는 쉬는 자세를 다시 잴 수 없음). 좌우 색은 인형 신발에.
 const rigs = new WeakMap();
 export function rigFor(m) {
-  if (!rigs.has(m.root)) {
-    const rig = createRig(m.root, m.boneOf);
-    addFootMarkers(rig, m.boneOf);
-    rigs.set(m.root, rig);
-  }
+  if (!rigs.has(m.root)) rigs.set(m.root, createRig(m.root, m.boneOf));
   return rigs.get(m.root);
 }
 
