@@ -98,8 +98,10 @@ export function splinePose3(frames, i, j, t, loop = 'wrap') {
   return { ...p, anchor: frames[i].anchor, air: Math.max(0, p.air ?? 0) };
 }
 
-// 느리게 보기 = 실제 박자의 3배 시간(사용자 결정 2026-10-12). 멈춤 없이 같은 곡선을 천천히 지나간다.
-export const SLOW_FACTOR = 3;
+// 재생 배수(사용자 결정 2026-10-12): 동작 자료는 실제 사람 박자, 기본은 실제의 1/2 속도(시간 2배), 느리게는 1/5 속도(시간 5배).
+// 멈춤 없이 같은 곡선을 천천히 지나간다.
+export const BASE_FACTOR = 2;
+export const SLOW_FACTOR = 5;
 
 // 지금 몇 번째 장면 사이인지. wrap: 마지막→처음으로 이어 움직임. restart: 마지막 장면에서 그 구간만큼 멈춘 뒤 처음으로 순간 이동.
 // durations[i] = 장면 i 에서 다음 장면까지 걸리는 시간(없으면 모두 stepMs). 한 바퀴 = cycle 1 증가 → 횟수 동작의 1회.

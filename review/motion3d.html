@@ -43,11 +43,11 @@
 <div class="stage"><div id="view"></div><div class="count" id="count"></div><div class="msg" id="msg"></div></div>
 <section class="info"><h2 id="name"></h2><div id="plan" class="legend"></div><ul class="cp" id="cp"></ul><div class="legend" id="note"></div></section>
 <script type="module">
-import { EXERCISES } from '../src/data/exercises.js?v=v-e048d9d0bbaf';
-import { motion3dFor } from '../src/data/motions3d.js?v=v-e048d9d0bbaf';
-import { SLOW_FACTOR } from '../src/domain/pose3d.js?v=v-e048d9d0bbaf';
-import { MODELS, loadModel } from '../src/ui/three/models.js?v=v-e048d9d0bbaf';
-import { createStickman } from '../src/ui/components/stickman.js?v=v-e048d9d0bbaf';
+import { EXERCISES } from '../src/data/exercises.js?v=v-1a5015b17abc';
+import { motion3dFor } from '../src/data/motions3d.js?v=v-1a5015b17abc';
+import { BASE_FACTOR, SLOW_FACTOR } from '../src/domain/pose3d.js?v=v-1a5015b17abc';
+import { MODELS, loadModel } from '../src/ui/three/models.js?v=v-1a5015b17abc';
+import { createStickman } from '../src/ui/components/stickman.js?v=v-1a5015b17abc';
 
 const TRY = ['J03', 'J01', 'S05'];
 const $ = id => document.getElementById(id);
@@ -86,12 +86,12 @@ function play() {
   viewer.setCamera(cam);
   $('count').textContent = ex.mode === 'reps' ? '0' : '';
   viewer.show(motion, {
-    slow: state.slow ? SLOW_FACTOR : 1,
+    slow: state.slow ? SLOW_FACTOR : BASE_FACTOR,
     onCycle: c => { if (ex.mode === 'reps') $('count').textContent = String(c); },
   });
   $('name').textContent = `${ex.id} ${ex.name}`;
   const lv = ex.levels[0];
-  $('plan').textContent = ex.mode === 'reps' ? `🔢 횟수: ${lv.reps}회 × ${lv.sets}세트 — 그림 한 번 = 1회` : ex.mode === 'hold' ? `✋ 버티기: ${lv.workSec}초 × ${lv.sets}세트` : `⏱ 시간: ${lv.workSec}초`;
+  $('plan').textContent = ex.mode === 'reps' ? `🔢 횟수: ${lv.reps}회 × ${lv.sets}세트 — 그림 한 번 = 1회 (그림은 실제의 ${state.slow ? '1/5' : '1/2'} 속도)` : ex.mode === 'hold' ? `✋ 버티기: ${lv.workSec}초 × ${lv.sets}세트` : `⏱ 시간: ${lv.workSec}초`;
   $('cp').innerHTML = ex.checkpoints.map((c, i) => `<li>${'①②③'[i]} ${c}</li>`).join('');
   $('note').textContent = motion.source === 'hand' ? '손으로 다듬은 3D 동작' : '2D 그림 자동 변환(초안)';
 }
@@ -100,7 +100,7 @@ function render() {
   buttons($('motions'), TRY.map(id => [id, EXERCISES.find(x => x.id === id).name]), k => k === state.ex, k => { state.ex = k; state.cam = null; });
   buttons($('models'), Object.entries(MODELS).map(([k, m]) => [k, m.label]), k => k === state.model, k => { state.model = k; useModel(k).then(play); });
   buttons($('cams'), [['side', '옆'], ['front', '앞'], ['diag', '비스듬히']], k => k === (state.cam ?? motion3dFor(EXERCISES.find(x => x.id === state.ex).poseId).camera), k => { state.cam = k; });
-  buttons($('opts'), [['slow', '🐢 3배 느리게'], ['mirror', '🪞 거울'], ['day', '☀ 기본'], ['night', '🌙 야간'], ['sun', '🔆 야외']],
+  buttons($('opts'), [['slow', '🐢 더 느리게'], ['mirror', '🪞 거울'], ['day', '☀ 기본'], ['night', '🌙 야간'], ['sun', '🔆 야외']],
     k => (k === 'slow' && state.slow) || (k === 'mirror' && state.mirror) || k === state.theme,
     k => { if (k === 'slow') state.slow = !state.slow; else if (k === 'mirror') state.mirror = !state.mirror; else state.theme = k; });
   viewer.setMirror(state.mirror);
