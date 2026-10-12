@@ -114,8 +114,10 @@ export function createRig(root, boneOf) {
     }
     // 바닥 놓기: 발 뼈는 발목에 있으니 발바닥 두께(sole)를 빼고, 나머지는 뼈 위치 그대로. 가장 낮은 곳 = 바닥.
     const minY = Math.min(...LOW.filter(([n]) => bones.has(n)).map(([n, off]) => wp(bones.get(n).node).y - (off === 'sole' ? sole : 0)));
-    const anchorName = { footR: 'rightFoot', footL: 'leftFoot' }[pose.anchor] ?? 'hips';
-    const a = wp(bones.get(anchorName).node);
+    // 기준점: 골반 / 두 발 가운데 / 한 발 — 이 점의 x·z 를 가운데에 고정(서 있는 발이 미끄러지지 않게)
+    const a = pose.anchor === 'feet'
+      ? wp(bones.get('rightFoot').node).add(wp(bones.get('leftFoot').node)).multiplyScalar(0.5)
+      : wp(bones.get({ footR: 'rightFoot', footL: 'leftFoot' }[pose.anchor] ?? 'hips').node);
     root.position.set(-a.x, -minY + (pose.air ?? 0) * height, -a.z);
     root.updateMatrixWorld(true);
   }

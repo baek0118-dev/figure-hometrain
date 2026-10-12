@@ -13,6 +13,20 @@ const THEMES = {
 };
 const CAMERA_DEG = { side: -90, front: 0, diag: -45 }; // 위에서 봐서 캐릭터 정면(+Z)에서 몇 도 — 음수 = 캐릭터 오른쪽
 
+// 프레임 사이 시간(초): 탭에서 오래 숨었다 돌아와도 0.1초를 넘지 않게(VRM 스프링 뼈가 튀지 않게)
+export const frameDt = (now, last) => Math.round(Math.min(0.1, Math.max(0, (now - last) / 1000)) * 1000) / 1000;
+
+// 모델마다 리그·좌우 표시는 한 번만 만든다(다시 고른 모델은 이미 자세가 들어가 있어 쉬는 자세를 다시 잴 수 없음)
+const rigs = new WeakMap();
+export function rigFor(m) {
+  if (!rigs.has(m.root)) {
+    const rig = createRig(m.root, m.boneOf);
+    addFootMarkers(rig, m.boneOf);
+    rigs.set(m.root, rig);
+  }
+  return rigs.get(m.root);
+}
+
 export function createViewer(container) {
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio ?? 1, 2));
@@ -48,8 +62,7 @@ export function createViewer(container) {
   function setModel(m) {
     if (model) scene.remove(model.root);
     model = m; scene.add(m.root);
-    rig = createRig(m.root, m.boneOf);
-    addFootMarkers(rig, m.boneOf);
+    rig = rigFor(m);
     resize();
     if (playing) show(playing.motion, playing.opts); else render();
   }
@@ -65,11 +78,11 @@ export function createViewer(container) {
     let t0 = performance.now(), last = t0, lastCycle = 0, lastStep = -1, pausedAt = null;
     const tick = () => {
       if (document.hidden) { pausedAt ??= performance.now(); timer = setTimeout(tick, 250); return; }
-      if (pausedAt != null) { t0 += performance.now() - pausedAt; pausedAt = null; }
+      if (pausedAt != null) { t0 += performance.now() - pausedAt; last = performance.now(); pausedAt = null; }
       const now = performance.now();
       const h = playhead(now - t0, frames.length, 700, { slow, loop, durations });
       // 보통 속도·느리게 모두 같은 곡선(멈춤 없음), 느리게는 시간만 늘어남
-      draw(splinePose3(frames, h.i, h.j, h.t, loop), (now - last) / 1000);
+      draw(splinePose3(frames, h.i, h.j, h.t, loop), frameDt(now, last));
       last = now;
       if (h.cycle !== lastCycle) { lastCycle = h.cycle; onCycle?.(h.cycle); }
       const step = h.t > 0.5 ? h.j : h.i;
@@ -88,7 +101,7 @@ export function createViewer(container) {
     hemi.intensity = 0.9 * t.light; sun.intensity = 0.8 * t.light;
     if (!timer) render();
   }
-  function dispose() { stop(); renderer.dispose(); container.innerHTML = ''; }
+  function dispose() { stop(); globalThis.removeEventListener?.('resize', resize); renderer.dispose(); container.innerHTML = ''; }
 
   setTheme('day');
   globalThis.addEventListener?.('resize', resize);

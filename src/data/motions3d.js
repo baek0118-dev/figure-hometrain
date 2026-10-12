@@ -17,7 +17,10 @@ const armsChest = { armR: { upper: [35, 25], fore: [25, -80] }, armL: { upper: [
 
 // durations[i] = 장면 i 에서 다음 장면까지 걸리는 시간(ms), 실제 사람 박자(느리게 보기는 3배). restart 동작의 마지막 값은 끝에서 머무는 시간.
 // restart 동작은 끝 자세 다음에 '처음 자세로 돌아오기' 장면을 둬서(왈츠는 같은 쪽으로 더 돌아 yaw 360) 처음으로 돌아갈 때 순간 이동이 없다.
-export const MOTIONS3D = {
+// 동작마다 기준점 하나(바닥에서 고정할 곳). 장면마다 바뀌면 순간 이동하므로 동작 전체에 같은 값을 넣는다.
+const anchored = (m, anchor) => ({ ...m, frames: m.frames.map(f => ({ ...f, anchor })) });
+
+const RAW = {
   // J03 오프아이스 왈츠 점프: 왼발 앞으로 디디며 출발 → 반 바퀴(반시계) → 오른발 착지, 왼다리 뒤로 쭉
   waltzJump: {
     camera: 'diag', loop: 'restart', props: [],
@@ -42,6 +45,7 @@ export const MOTIONS3D = {
     ],
   },
   // J01 스쿼트 점프: 무릎은 발끝 방향 → 팔 휘둘러 높이 → 무릎 굽혀 사뿐히 착지
+  // 무릎을 바깥으로 벌린 만큼 정강이는 안쪽으로 — 발이 옆으로 미끄러지지 않게(발 너비 그대로)
   squatJump: {
     camera: 'side', loop: 'wrap', props: [],
     note: '참고: 연습 체크포인트(무릎은 발끝 방향·팔 휘둘러·무릎 굽혀 착지) 그대로, 2026-10-12 확인',
@@ -49,15 +53,15 @@ export const MOTIONS3D = {
     frames: [
       P({}),
       P({ torso: { fwd: 35 }, head: { fwd: 15 }, armR: { upper: [-45, 10], fore: [-35, 10] }, armL: { upper: [-45, 10], fore: [-35, 10] },
-        legR: { thigh: [80, 8], shin: [-15, 8], foot: [90, 0] }, legL: { thigh: [80, 8], shin: [-15, 8], foot: [90, 0] } }),
+        legR: { thigh: [80, 8], shin: [-15, 5], foot: [90, 0] }, legL: { thigh: [80, 8], shin: [-15, 5], foot: [90, 0] } }),
       P({ air: 0.02, torso: { fwd: 15 }, armR: { upper: [95, 10], fore: [105, 10] }, armL: { upper: [95, 10], fore: [105, 10] },
-        legR: { thigh: [30, 5], shin: [-10, 5], foot: [50, 0] }, legL: { thigh: [30, 5], shin: [-10, 5], foot: [50, 0] } }),
+        legR: { thigh: [30, 3], shin: [-10, 3], foot: [50, 0] }, legL: { thigh: [30, 3], shin: [-10, 3], foot: [50, 0] } }),
       P({ air: 0.12, armR: { upper: [165, 10], fore: [170, 10] }, armL: { upper: [165, 10], fore: [170, 10] },
-        legR: { thigh: [0, 4], shin: [0, 4], foot: [30, 0] }, legL: { thigh: [0, 4], shin: [0, 4], foot: [30, 0] } }),
+        legR: { thigh: [0, 3], shin: [0, 3], foot: [30, 0] }, legL: { thigh: [0, 3], shin: [0, 3], foot: [30, 0] } }),
       P({ torso: { fwd: 10 }, armR: { upper: [110, 10], fore: [115, 10] }, armL: { upper: [110, 10], fore: [115, 10] },
-        legR: { thigh: [25, 6], shin: [-10, 6], foot: [70, 0] }, legL: { thigh: [25, 6], shin: [-10, 6], foot: [70, 0] } }),
+        legR: { thigh: [25, 3], shin: [-10, 3], foot: [70, 0] }, legL: { thigh: [25, 3], shin: [-10, 3], foot: [70, 0] } }),
       P({ torso: { fwd: 30 }, head: { fwd: 10 }, armR: { upper: [70, 10], fore: [80, 10] }, armL: { upper: [70, 10], fore: [80, 10] },
-        legR: { thigh: [75, 8], shin: [-15, 8], foot: [90, 0] }, legL: { thigh: [75, 8], shin: [-15, 8], foot: [90, 0] } }),
+        legR: { thigh: [75, 8], shin: [-15, 4], foot: [90, 0] }, legL: { thigh: [75, 8], shin: [-15, 4], foot: [90, 0] } }),
     ],
   },
   // S05 업라이트 스핀 축 자세(버티기): 팔 벌려 준비 → 팔 모으며 무릎 들기 → 팔 가슴 앞, 프리 발(왼발)은 오른 무릎 옆에서 버티기
@@ -72,10 +76,16 @@ export const MOTIONS3D = {
       P({ ...armsChest, legR: { thigh: [0, 2], shin: [0, 2], foot: [90, 0] },
         legL: { thigh: [45, 25], shin: [-30, -40], foot: [20, -20] } }),
       P({ armR: { upper: [45, 40], fore: [60, 20] }, armL: { upper: [45, 40], fore: [60, 20] },
-        legL: { thigh: [20, 10], shin: [-5, -10], foot: [50, -5] } }),  // 발 내리며 팔 풀기
+        legL: { thigh: [30, 12], shin: [-15, -12], foot: [70, -5] } }),  // 발 내리며 팔 풀기(발끝이 딛는 발보다 먼저 닿지 않게)
       SPIN_READY,
     ],
   },
+};
+
+export const MOTIONS3D = {
+  waltzJump: anchored(RAW.waltzJump, 'feet'),
+  squatJump: anchored(RAW.squatJump, 'feet'),
+  spinAxis: anchored(RAW.spinAxis, 'footR'), // 딛는 오른발 고정
 };
 
 export function motion3dFor(poseId) {

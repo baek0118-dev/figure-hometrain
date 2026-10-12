@@ -26,6 +26,15 @@
     .msg { position: absolute; left: 12px; bottom: 12px; right: 12px; background: rgba(20,22,31,.8); color: #fff; padding: 8px 12px; border-radius: 10px; font-size: 15px; display: none; }
     .info { padding: 0 16px 30px; } .info h2 { font-size: 20px; margin: 8px 0 4px; } .cp { margin: 0; padding-left: 0; list-style: none; }
     .legend { color: var(--muted); font-size: 14px; }
+    /* 휴대폰(좁은 화면): 그림을 먼저 크게, 버튼은 그 아래 작게 */
+    @media (max-width: 700px) {
+      .page { display: flex; flex-direction: column; }
+      .stage { order: -1; height: 62vh; margin: 8px 12px; }
+      .row { padding: 6px 12px 0; gap: 6px; }
+      .row button { padding: 7px 12px; font-size: 15px; }
+      .count { font-size: 48px; }
+      header { padding: 10px 12px 0; } .how { font-size: 14px; padding: 8px 10px; }
+    }
   </style>
 </head>
 <body>
@@ -36,18 +45,24 @@
     사람형·캐릭터형 중 어느 쪽이 더 따라 하기 쉬운지 골라 주세요.
   </div>
 </header>
+<div class="page">
+<div class="controls">
 <div class="row" id="motions"></div>
 <div class="row" id="models"></div>
 <div class="row" id="cams"></div>
 <div class="row" id="opts"></div>
+</div>
 <div class="stage"><div id="view"></div><div class="count" id="count"></div><div class="msg" id="msg"></div></div>
 <section class="info"><h2 id="name"></h2><div id="plan" class="legend"></div><ul class="cp" id="cp"></ul><div class="legend" id="note"></div></section>
+</div>
 <script type="module">
-import { EXERCISES } from '../src/data/exercises.js?v=v-e4395bc65197';
-import { motion3dFor } from '../src/data/motions3d.js?v=v-e4395bc65197';
-import { BASE_FACTOR, SLOW_FACTOR } from '../src/domain/pose3d.js?v=v-e4395bc65197';
-import { MODELS, loadModel } from '../src/ui/three/models.js?v=v-e4395bc65197';
-import { createStickman } from '../src/ui/components/stickman.js?v=v-e4395bc65197';
+import { EXERCISES } from '../src/data/exercises.js?v=v-a2aa67d59f67';
+import { motion3dFor } from '../src/data/motions3d.js?v=v-a2aa67d59f67';
+import { createStickman } from '../src/ui/components/stickman.js?v=v-a2aa67d59f67';
+// 3D 쪽(three·import map 이 필요한 것)은 아래 try 안에서 불러온다 — 못 불러오면 막대 그림으로 대신 보여 주기 위해
+let BASE_FACTOR = 2, SLOW_FACTOR = 4;
+let MODELS = { doll: { label: '인형(임시)' }, human: { label: '사람형' }, vroid: { label: '캐릭터형' } };
+let loadModel = async () => ({});
 
 const TRY = ['J03', 'J01', 'S05'];
 const $ = id => document.getElementById(id);
@@ -64,17 +79,21 @@ function buttons(host, items, isOn, onClick) {
 
 let viewer = null;
 try {
-  const { createViewer } = await import('../src/ui/three/viewer.js');
+  const [pose3d, models, { createViewer }] = await Promise.all([
+    import('../src/domain/pose3d.js'), import('../src/ui/three/models.js'), import('../src/ui/three/viewer.js')]);
+  ({ BASE_FACTOR, SLOW_FACTOR } = pose3d);
+  ({ MODELS, loadModel } = models);
   viewer = createViewer($('view'));
 } catch (e) {
   // WebGL 이 안 되면 지금 스틱맨으로
   msg('3D 를 못 그리는 기기라 막대 그림으로 보여 줘요');
   const sm = createStickman($('view'));
-  viewer = { setModel() {}, setCamera() {}, setMirror() {}, setTheme() {}, show: m => sm.show(EXERCISES.find(x => x.id === state.ex).poseId, { slow: state.slow ? SLOW_FACTOR : 1 }), stop: () => sm.stop() };
+  viewer = { setModel() {}, setCamera() {}, setMirror() {}, setTheme() {}, show: m => sm.show(EXERCISES.find(x => x.id === state.ex).poseId, { slow: state.slow ? SLOW_FACTOR : BASE_FACTOR }), stop: () => sm.stop() };
 }
 
 async function useModel(id) {
   const m = await loadModel(id);
+  if (id !== state.model) return; // 그새 다른 모델을 골랐으면 늦게 끝난 읽기는 버림
   msg(m.message);
   viewer.setModel(m);
 }
@@ -108,8 +127,14 @@ function render() {
   play();
 }
 
-await useModel(state.model);
+// 인형을 먼저 보여 주고(빈 화면 없이), 고른 모델은 다 읽은 뒤 바꾼다
+const wanted = state.model;
+state.model = 'doll';
+await useModel('doll');
 render();
+state.model = wanted;
+render();
+useModel(state.model).then(play);
 </script>
 </body>
 </html>

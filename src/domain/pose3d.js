@@ -3,7 +3,8 @@
 //  팔다리 [fwd, out]: 0,0 = 아래. fwd + = 앞으로 들어 올림, out + = 몸 바깥(옆)으로 벌림(음수 = 몸 안쪽으로).
 //  torso { fwd, side, twist }: 0 = 곧게 위. fwd + = 앞으로 숙임, side + = 오른쪽으로 기울임, twist + = 가슴을 왼쪽으로 돌림.
 //  head { fwd, turn }: fwd + = 고개 숙임(절대각), turn + = 왼쪽을 봄.
-//  yaw: 몸 전체 방향, 위에서 봐서 반시계 + (= 왼쪽으로 돎). air: 띄움(키에 대한 비율). anchor: 바닥에서 고정할 곳.
+//  yaw: 몸 전체 방향, 위에서 봐서 반시계 + (= 왼쪽으로 돎). air: 띄움(키에 대한 비율).
+//  anchor: 바닥에서 고정할 곳 'hips'|'feet'(두 발 가운데)|'footR'|'footL' — 동작 안에서는 한 가지로(바뀌면 순간 이동).
 
 const rad = d => (d * Math.PI) / 180;
 const rotX = ([x, y, z], d) => { const c = Math.cos(rad(d)), s = Math.sin(rad(d)); return [x, y * c - z * s, y * s + z * c]; };
@@ -85,7 +86,7 @@ export const ease = t => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
 // 앞뒤 이웃 장면: wrap 은 돌아가며, restart 는 끝에서 같은 장면을 한 번 더 쓴다. air 는 0 아래로 내려가지 않게.
 const cr = (p0, p1, p2, p3, t) => 0.5 * (2 * p1 + (p2 - p0) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t + (3 * p1 - p0 - 3 * p2 + p3) * t * t * t);
 function splineAny(a, b, c, d, t) {
-  if (typeof b === 'number') return cr(a ?? b, b, c ?? b, d ?? c ?? b, t);
+  if (typeof b === 'number') return b === c ? b : cr(a ?? b, b, c ?? b, d ?? c ?? b, t); // 같은 값이 이어지면 그대로(넘쳐서 거꾸로 돌지 않게)
   if (Array.isArray(b)) return b.map((v, k) => splineAny(a?.[k], v, c?.[k], d?.[k], t));
   if (b && typeof b === 'object') return Object.fromEntries(Object.keys(b).map(k => [k, splineAny(a?.[k], b[k], c?.[k], d?.[k], t)]));
   return b;
