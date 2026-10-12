@@ -1,11 +1,11 @@
 // 3D 동작 화면 — 설계 메모 2026-10-12 §4.3. 툰 + 테두리선 + 바닥 그림자 원, 카메라 3방향, 테마 3가지, 거울(화면 좌우 뒤집기).
-// 약 30fps 타이머(rAF 대신, 스틱맨과 같은 이유). 탭이 숨으면 멈추고 돌아오면 이어서.
+// rAF 대신 타이머(스틱맨과 같은 이유). 탭이 숨으면 멈추고 돌아오면 이어서.
 import * as THREE from 'three';
 import { OutlineEffect } from 'three/addons/effects/OutlineEffect.js';
 import { createRig, addFootMarkers } from './rig.js';
-import { playhead, lerpPose3, splinePose3, ease } from '../../domain/pose3d.js';
+import { playhead, splinePose3 } from '../../domain/pose3d.js';
 
-const FRAME_MS = 33;
+const FRAME_MS = 16; // 약 60fps — 느리게 볼 때도 매끄럽게(타이머라 기기가 느리면 저절로 덜 그림)
 const THEMES = {
   day: { bg: 0xeef0f7, floor: 0xb4b2a9, light: 1.0 },
   night: { bg: 0x0b0b10, floor: 0x3a3a44, light: 0.75 },
@@ -68,9 +68,8 @@ export function createViewer(container) {
       if (pausedAt != null) { t0 += performance.now() - pausedAt; pausedAt = null; }
       const now = performance.now();
       const h = playhead(now - t0, frames.length, 700, { slow, loop, durations });
-      // 보통 속도: 곡선으로 멈춤 없이 / 느리게: 장면마다 멈추며 하나씩(자세 확인용)
-      const pose = slow > 1 ? lerpPose3(frames[h.i], frames[h.j], ease(h.t)) : splinePose3(frames, h.i, h.j, h.t, loop);
-      draw(pose, (now - last) / 1000);
+      // 보통 속도·느리게 모두 같은 곡선(멈춤 없음), 느리게는 시간만 늘어남
+      draw(splinePose3(frames, h.i, h.j, h.t, loop), (now - last) / 1000);
       last = now;
       if (h.cycle !== lastCycle) { lastCycle = h.cycle; onCycle?.(h.cycle); }
       const step = h.t > 0.5 ? h.j : h.i;

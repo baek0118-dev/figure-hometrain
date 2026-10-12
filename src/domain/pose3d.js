@@ -98,6 +98,9 @@ export function splinePose3(frames, i, j, t, loop = 'wrap') {
   return { ...p, anchor: frames[i].anchor, air: Math.max(0, p.air ?? 0) };
 }
 
+// 느리게 보기 = 실제 박자의 3배 시간(사용자 결정 2026-10-12). 멈춤 없이 같은 곡선을 천천히 지나간다.
+export const SLOW_FACTOR = 3;
+
 // 지금 몇 번째 장면 사이인지. wrap: 마지막→처음으로 이어 움직임. restart: 마지막 장면에서 그 구간만큼 멈춘 뒤 처음으로 순간 이동.
 // durations[i] = 장면 i 에서 다음 장면까지 걸리는 시간(없으면 모두 stepMs). 한 바퀴 = cycle 1 증가 → 횟수 동작의 1회.
 export function playhead(elapsedMs, n, stepMs, { slow = 1, loop = 'wrap', durations } = {}) {
@@ -107,7 +110,5 @@ export function playhead(elapsedMs, n, stepMs, { slow = 1, loop = 'wrap', durati
   let r = elapsedMs - cycle * total, i = 0;
   while (i < n - 1 && r >= d[i]) { r -= d[i]; i++; }
   if (loop === 'restart' && i === n - 1) return { i, j: i, t: 0, cycle };
-  const hold = slow > 1 ? 0.4 : 0;   // 느리게 볼 땐 각 자세에서 40% 동안 멈춤
-  const t = Math.max(0, (r / d[i] - hold) / (1 - hold));
-  return { i, j: (i + 1) % n, t, cycle };
+  return { i, j: (i + 1) % n, t: r / d[i], cycle };
 }
