@@ -43,11 +43,11 @@
 <div class="stage"><div id="view"></div><div class="count" id="count"></div><div class="msg" id="msg"></div></div>
 <section class="info"><h2 id="name"></h2><div id="plan" class="legend"></div><ul class="cp" id="cp"></ul><div class="legend" id="note"></div></section>
 <script type="module">
-import { EXERCISES } from '../src/data/exercises.js?v=v-1a5015b17abc';
-import { motion3dFor } from '../src/data/motions3d.js?v=v-1a5015b17abc';
-import { BASE_FACTOR, SLOW_FACTOR } from '../src/domain/pose3d.js?v=v-1a5015b17abc';
-import { MODELS, loadModel } from '../src/ui/three/models.js?v=v-1a5015b17abc';
-import { createStickman } from '../src/ui/components/stickman.js?v=v-1a5015b17abc';
+import { EXERCISES } from '../src/data/exercises.js?v=v-e4395bc65197';
+import { motion3dFor } from '../src/data/motions3d.js?v=v-e4395bc65197';
+import { BASE_FACTOR, SLOW_FACTOR } from '../src/domain/pose3d.js?v=v-e4395bc65197';
+import { MODELS, loadModel } from '../src/ui/three/models.js?v=v-e4395bc65197';
+import { createStickman } from '../src/ui/components/stickman.js?v=v-e4395bc65197';
 
 const TRY = ['J03', 'J01', 'S05'];
 const $ = id => document.getElementById(id);
@@ -91,7 +91,7 @@ function play() {
   });
   $('name').textContent = `${ex.id} ${ex.name}`;
   const lv = ex.levels[0];
-  $('plan').textContent = ex.mode === 'reps' ? `🔢 횟수: ${lv.reps}회 × ${lv.sets}세트 — 그림 한 번 = 1회 (그림은 실제의 ${state.slow ? '1/5' : '1/2'} 속도)` : ex.mode === 'hold' ? `✋ 버티기: ${lv.workSec}초 × ${lv.sets}세트` : `⏱ 시간: ${lv.workSec}초`;
+  $('plan').textContent = ex.mode === 'reps' ? `🔢 횟수: ${lv.reps}회 × ${lv.sets}세트 — 그림 한 번 = 1회 (그림은 실제의 ${state.slow ? '1/4' : '1/2'} 속도)` : ex.mode === 'hold' ? `✋ 버티기: ${lv.workSec}초 × ${lv.sets}세트` : `⏱ 시간: ${lv.workSec}초`;
   $('cp').innerHTML = ex.checkpoints.map((c, i) => `<li>${'①②③'[i]} ${c}</li>`).join('');
   $('note').textContent = motion.source === 'hand' ? '손으로 다듬은 3D 동작' : '2D 그림 자동 변환(초안)';
 }
