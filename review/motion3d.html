@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>3D 동작 시험판</title>
+  <script type="importmap">
+  { "imports": {
+      "three": "../vendor/three/three.module.min.js",
+      "three/addons/": "../vendor/three/addons/",
+      "@pixiv/three-vrm": "../vendor/three-vrm/three-vrm.module.min.js"
+  } }
+  </script>
+  <style>
+    :root { --bg:#f6f7fb; --surface:#fff; --surface2:#eef0f7; --text:#14161f; --muted:#5b6070; --line:#d9dce6; --accent:#4f46e5; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 17px/1.5 -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif; }
+    header { padding: 16px 16px 4px; } h1 { font-size: 22px; margin: 0 0 6px; }
+    .how { background: var(--surface); border-radius: 14px; padding: 10px 14px; font-size: 15px; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 16px 0; }
+    .row button { font: inherit; font-weight: 700; padding: 10px 16px; border-radius: 999px; border: 2px solid var(--line); background: var(--surface); color: var(--text); }
+    .row button.on { border-color: var(--accent); background: var(--accent); color: #fff; }
+    .stage { position: relative; margin: 12px 16px; height: min(70vh, 640px); border-radius: 18px; overflow: hidden; background: var(--surface2); }
+    #view { position: absolute; inset: 0; }
+    .count { position: absolute; right: 18px; top: 10px; font-size: 64px; font-weight: 900; color: var(--accent); text-shadow: 0 2px 0 #fff; }
+    .msg { position: absolute; left: 12px; bottom: 12px; right: 12px; background: rgba(20,22,31,.8); color: #fff; padding: 8px 12px; border-radius: 10px; font-size: 15px; display: none; }
+    .info { padding: 0 16px 30px; } .info h2 { font-size: 20px; margin: 8px 0 4px; } .cp { margin: 0; padding-left: 0; list-style: none; }
+    .legend { color: var(--muted); font-size: 14px; }
+  </style>
+</head>
+<body>
+<header>
+  <h1>⛸ 3D 동작 시험판</h1>
+  <div class="how">
+    유하가 매트에서 <b>2m 떨어져</b> 보고 따라 해 보세요. <b>주황 = 오른발, 초록 = 왼발</b>이에요.<br>
+    사람형·캐릭터형 중 어느 쪽이 더 따라 하기 쉬운지 골라 주세요.
+  </div>
+</header>
+<div class="row" id="motions"></div>
+<div class="row" id="models"></div>
+<div class="row" id="cams"></div>
+<div class="row" id="opts"></div>
+<div class="stage"><div id="view"></div><div class="count" id="count"></div><div class="msg" id="msg"></div></div>
+<section class="info"><h2 id="name"></h2><div id="plan" class="legend"></div><ul class="cp" id="cp"></ul><div class="legend" id="note"></div></section>
+<script type="module">
+import { EXERCISES } from '../src/data/exercises.js?v=v-647a876751fc';
+import { motion3dFor } from '../src/data/motions3d.js?v=v-647a876751fc';
+import { MODELS, loadModel } from '../src/ui/three/models.js?v=v-647a876751fc';
+import { createStickman } from '../src/ui/components/stickman.js?v=v-647a876751fc';
+
+const TRY = ['J03', 'J01', 'S05'];
+const $ = id => document.getElementById(id);
+const state = { ex: TRY[0], model: 'human', cam: null, slow: false, mirror: false, theme: 'day' };
+const msg = t => { $('msg').textContent = t ?? ''; $('msg').style.display = t ? 'block' : 'none'; };
+
+function buttons(host, items, isOn, onClick) {
+  host.innerHTML = '';
+  for (const [key, label] of items) {
+    const b = document.createElement('button'); b.textContent = label; b.className = isOn(key) ? 'on' : '';
+    b.onclick = () => { onClick(key); render(); }; host.appendChild(b);
+  }
+}
+
+let viewer = null;
+try {
+  const { createViewer } = await import('../src/ui/three/viewer.js');
+  viewer = createViewer($('view'));
+} catch (e) {
+  // WebGL 이 안 되면 지금 스틱맨으로
+  msg('3D 를 못 그리는 기기라 막대 그림으로 보여 줘요');
+  const sm = createStickman($('view'));
+  viewer = { setModel() {}, setCamera() {}, setMirror() {}, setTheme() {}, show: m => sm.show(EXERCISES.find(x => x.id === state.ex).poseId, { slow: state.slow ? 2.5 : 1 }), stop: () => sm.stop() };
+}
+
+async function useModel(id) {
+  const m = await loadModel(id);
+  msg(m.message);
+  viewer.setModel(m);
+}
+
+function play() {
+  const ex = EXERCISES.find(x => x.id === state.ex);
+  const motion = motion3dFor(ex.poseId);
+  const cam = state.cam ?? motion.camera;
+  viewer.setCamera(cam);
+  $('count').textContent = ex.mode === 'reps' ? '0' : '';
+  viewer.show(motion, {
+    slow: state.slow ? 2.5 : 1,
+    onCycle: c => { if (ex.mode === 'reps') $('count').textContent = String(c); },
+  });
+  $('name').textContent = `${ex.id} ${ex.name}`;
+  const lv = ex.levels[0];
+  $('plan').textContent = ex.mode === 'reps' ? `🔢 횟수: ${lv.reps}회 × ${lv.sets}세트 — 그림 한 번 = 1회` : ex.mode === 'hold' ? `✋ 버티기: ${lv.workSec}초 × ${lv.sets}세트` : `⏱ 시간: ${lv.workSec}초`;
+  $('cp').innerHTML = ex.checkpoints.map((c, i) => `<li>${'①②③'[i]} ${c}</li>`).join('');
+  $('note').textContent = motion.source === 'hand' ? '손으로 다듬은 3D 동작' : '2D 그림 자동 변환(초안)';
+}
+
+function render() {
+  buttons($('motions'), TRY.map(id => [id, EXERCISES.find(x => x.id === id).name]), k => k === state.ex, k => { state.ex = k; state.cam = null; });
+  buttons($('models'), Object.entries(MODELS).map(([k, m]) => [k, m.label]), k => k === state.model, k => { state.model = k; useModel(k).then(play); });
+  buttons($('cams'), [['side', '옆'], ['front', '앞'], ['diag', '비스듬히']], k => k === (state.cam ?? motion3dFor(EXERCISES.find(x => x.id === state.ex).poseId).camera), k => { state.cam = k; });
+  buttons($('opts'), [['slow', '🐢 느리게'], ['mirror', '🪞 거울'], ['day', '☀ 기본'], ['night', '🌙 야간'], ['sun', '🔆 야외']],
+    k => (k === 'slow' && state.slow) || (k === 'mirror' && state.mirror) || k === state.theme,
+    k => { if (k === 'slow') state.slow = !state.slow; else if (k === 'mirror') state.mirror = !state.mirror; else state.theme = k; });
+  viewer.setMirror(state.mirror);
+  viewer.setTheme(state.theme);
+  play();
+}
+
+await useModel(state.model);
+render();
+</script>
+</body>
+</html>

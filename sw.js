@@ -1,16 +1,23 @@
 // 서비스 워커 — 설계 §1.1, §3.1. 앱 파일 전부를 미리 저장(오프라인: 공원·놀이터), 같은 주소 요청은 캐시 먼저.
 // FILES·VERSION 은 tools/update-sw.mjs 가 채운다. 새 버전은 기다렸다가 앱이 "새로고침"을 보내면 바뀐다.
-const VERSION = 'v-7327048bc6f9';
+const VERSION = 'v-647a876751fc';
 const FILES = [
   "./",
   "index.html",
   "manifest.webmanifest",
+  "review/motion3d.html",
   "icons/icon-180.png",
   "icons/icon-192.png",
   "icons/icon-512.png",
   "icons/maskable-512.png",
   "vendor/anthropic-sdk-0.133.0.js",
   "vendor/tailwind-3.4.17.js",
+  "vendor/three/addons/effects/OutlineEffect.js",
+  "vendor/three/addons/loaders/GLTFLoader.js",
+  "vendor/three/addons/utils/BufferGeometryUtils.js",
+  "vendor/three/three.core.min.js",
+  "vendor/three/three.module.min.js",
+  "vendor/three-vrm/three-vrm.module.min.js",
   "src/ai/autotrim.js",
   "src/ai/client.js",
   "src/ai/coach.js",
@@ -19,6 +26,7 @@ const FILES = [
   "src/ai/trim.js",
   "src/app/store.js",
   "src/data/exercises.js",
+  "src/data/motions3d.js",
   "src/data/poses.js",
   "src/data/templates.js",
   "src/domain/adapt.js",
@@ -29,6 +37,7 @@ const FILES = [
   "src/domain/kinematics.js",
   "src/domain/modes.js",
   "src/domain/planner.js",
+  "src/domain/pose3d.js",
   "src/domain/timeline.js",
   "src/domain/validate.js",
   "src/domain/xp.js",
@@ -47,7 +56,11 @@ const FILES = [
   "src/ui/screens/player.js",
   "src/ui/screens/settings.js",
   "src/ui/screens/start.js",
-  "src/ui/screens/stats.js"
+  "src/ui/screens/stats.js",
+  "src/ui/three/mannequin.js",
+  "src/ui/three/models.js",
+  "src/ui/three/rig.js",
+  "src/ui/three/viewer.js"
 ];
 const CACHE = `yuha-${VERSION}`;
 
