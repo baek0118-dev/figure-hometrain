@@ -26,6 +26,10 @@
     .msg { position: absolute; left: 12px; bottom: 12px; right: 12px; background: rgba(20,22,31,.8); color: #fff; padding: 8px 12px; border-radius: 10px; font-size: 15px; display: none; }
     .info { padding: 0 16px 30px; } .info h2 { font-size: 20px; margin: 8px 0 4px; } .cp { margin: 0; padding-left: 0; list-style: none; }
     .legend { color: var(--muted); font-size: 14px; }
+    .looks { margin: 4px 16px 16px; background: var(--surface); border-radius: 14px; padding: 10px 12px; }
+    .looks h2 { font-size: 18px; margin: 0 0 6px; } .looks .row { padding: 4px 0 0; }
+    .looks label { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; margin: 6px 12px 0 0; }
+    .looks input[type=color] { width: 44px; height: 36px; border: 2px solid var(--line); border-radius: 10px; padding: 0; background: none; }
     /* 휴대폰(좁은 화면): 그림을 먼저 크게, 버튼은 그 아래 작게 */
     @media (max-width: 700px) {
       .page { display: flex; flex-direction: column; }
@@ -54,15 +58,24 @@
 </div>
 <div class="stage"><div id="view"></div><div class="count" id="count"></div><div class="msg" id="msg"></div></div>
 <section class="info"><h2 id="name"></h2><div id="plan" class="legend"></div><ul class="cp" id="cp"></ul><div class="legend" id="note"></div></section>
+<section class="looks" id="looks" hidden>
+  <h2>🎨 꾸미기 <span class="legend">(사람형) 신발은 오른발 주황·왼발 초록 그대로예요</span></h2>
+  <div class="row" id="hairs"></div>
+  <div id="colors"></div>
+  <div class="row"><button id="lookReset">기본으로</button><button id="lookCopy">조합 복사</button></div>
+  <div class="legend" id="lookText"></div>
+</section>
 </div>
 <script type="module">
-import { EXERCISES } from '../src/data/exercises.js?v=v-a2aa67d59f67';
-import { motion3dFor } from '../src/data/motions3d.js?v=v-a2aa67d59f67';
-import { createStickman } from '../src/ui/components/stickman.js?v=v-a2aa67d59f67';
+import { EXERCISES } from '../src/data/exercises.js?v=v-89ab36c92805';
+import { motion3dFor } from '../src/data/motions3d.js?v=v-89ab36c92805';
+import { createStickman } from '../src/ui/components/stickman.js?v=v-89ab36c92805';
 // 3D 쪽(three·import map 이 필요한 것)은 아래 try 안에서 불러온다 — 못 불러오면 막대 그림으로 대신 보여 주기 위해
 let BASE_FACTOR = 2, SLOW_FACTOR = 4;
 let MODELS = { doll: { label: '인형(임시)' }, human: { label: '사람형' }, vroid: { label: '캐릭터형' } };
 let loadModel = async () => ({});
+let applyLook = async () => {};
+let LOOK = null; // look.js (꾸미기 값)
 
 const TRY = ['J03', 'J01', 'S05'];
 const $ = id => document.getElementById(id);
@@ -79,10 +92,11 @@ function buttons(host, items, isOn, onClick) {
 
 let viewer = null;
 try {
-  const [pose3d, models, { createViewer }] = await Promise.all([
-    import('../src/domain/pose3d.js'), import('../src/ui/three/models.js'), import('../src/ui/three/viewer.js')]);
+  const [pose3d, models, { createViewer }, look] = await Promise.all([
+    import('../src/domain/pose3d.js'), import('../src/ui/three/models.js'), import('../src/ui/three/viewer.js'), import('../src/ui/three/look.js')]);
   ({ BASE_FACTOR, SLOW_FACTOR } = pose3d);
-  ({ MODELS, loadModel } = models);
+  ({ MODELS, loadModel, applyLook } = models);
+  LOOK = look;
   viewer = createViewer($('view'));
 } catch (e) {
   // WebGL 이 안 되면 지금 스틱맨으로
@@ -91,11 +105,53 @@ try {
   viewer = { setModel() {}, setCamera() {}, setMirror() {}, setTheme() {}, show: m => sm.show(EXERCISES.find(x => x.id === state.ex).poseId, { slow: state.slow ? SLOW_FACTOR : BASE_FACTOR }), stop: () => sm.stop() };
 }
 
+// ── 꾸미기(사람형): 이 기기에만 저장. 저장값은 parseLook 으로 확인해서 쓴다 ──
+const LOOK_KEY = 'yuha.motion3d.look';
+let current = null;
+let look = {};
+function loadSavedLook() {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(LOOK_KEY) ?? 'null'); } catch { saved = null; }
+  return LOOK ? LOOK.parseLook(saved) : {};
+}
+function saveLook() {
+  try { localStorage.setItem(LOOK_KEY, JSON.stringify(look)); } catch { /* 사생활 보호 모드 등 — 저장만 건너뜀 */ }
+}
+async function changeLook(patch) {
+  look = LOOK.parseLook({ ...look, ...patch });
+  saveLook();
+  if (current?.spec?.dress) await applyLook(current, look);
+  renderLooks();
+}
+function renderLooks() {
+  const panel = $('looks');
+  panel.hidden = !(LOOK && current?.spec?.dress);
+  if (panel.hidden) return;
+  buttons($('hairs'), Object.entries(LOOK.HAIRS), k => k === look.hair, k => changeLook({ hair: k }));
+  const box = $('colors'); box.innerHTML = '';
+  for (const [k, label] of Object.entries(LOOK.LOOK_LABELS)) {
+    const lab = document.createElement('label');
+    const inp = document.createElement('input'); inp.type = 'color'; inp.value = look[k];
+    inp.oninput = () => changeLook({ [k]: inp.value });
+    lab.append(inp, label); box.appendChild(lab);
+  }
+  $('lookText').textContent = LOOK.lookToText(look);
+}
+$('lookReset').onclick = () => changeLook({ ...LOOK.DEFAULT_LOOK });
+$('lookCopy').onclick = async () => {
+  const t = LOOK.lookToText(look);
+  try { await navigator.clipboard.writeText(t); $('lookText').textContent = `복사했어요: ${t}`; } catch { $('lookText').textContent = `이 글을 길게 눌러 복사해 주세요: ${t}`; }
+};
+look = loadSavedLook();
+
 async function useModel(id) {
   const m = await loadModel(id);
   if (id !== state.model) return; // 그새 다른 모델을 골랐으면 늦게 끝난 읽기는 버림
   msg(m.message);
+  current = m;
+  if (m.spec?.dress) await applyLook(m, look);
   viewer.setModel(m);
+  renderLooks();
 }
 
 function play() {

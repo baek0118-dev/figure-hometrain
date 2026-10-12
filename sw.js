@@ -1,6 +1,6 @@
 // 서비스 워커 — 설계 §1.1, §3.1. 앱 파일 전부를 미리 저장(오프라인: 공원·놀이터), 같은 주소 요청은 캐시 먼저.
 // FILES·VERSION 은 tools/update-sw.mjs 가 채운다. 새 버전은 기다렸다가 앱이 "새로고침"을 보내면 바뀐다.
-const VERSION = 'v-a2aa67d59f67';
+const VERSION = 'v-89ab36c92805';
 const FILES = [
   "./",
   "index.html",
@@ -18,7 +18,10 @@ const FILES = [
   "vendor/three/three.core.min.js",
   "vendor/three/three.module.min.js",
   "vendor/three-vrm/three-vrm.module.min.js",
-  "assets/models/human-hair.glb",
+  "assets/models/hair-Buns.glb",
+  "assets/models/hair-BuzzedFemale.glb",
+  "assets/models/hair-Long.glb",
+  "assets/models/hair-SimpleParted.glb",
   "assets/models/human.glb",
   "src/ai/autotrim.js",
   "src/ai/client.js",
@@ -59,6 +62,7 @@ const FILES = [
   "src/ui/screens/settings.js",
   "src/ui/screens/start.js",
   "src/ui/screens/stats.js",
+  "src/ui/three/look.js",
   "src/ui/three/mannequin.js",
   "src/ui/three/models.js",
   "src/ui/three/rig.js",

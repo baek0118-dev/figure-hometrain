@@ -2,12 +2,13 @@
 import * as THREE from 'three';
 import { createMannequin } from './mannequin.js';
 import { guessBoneMap } from './rig.js';
+import { DEFAULT_LOOK } from './look.js';
 
 const url = p => new URL(p, import.meta.url).href;
 
 export const MODELS = {
   doll: { label: '인형(임시)', kind: 'code' },
-  human: { label: '사람형', kind: 'gltf', url: url('../../../assets/models/human.glb'), hair: url('../../../assets/models/human-hair.glb'),
+  human: { label: '사람형', kind: 'gltf', url: url('../../../assets/models/human.glb'), hair: DEFAULT_LOOK.hair, hairUrl: name => url(`../../../assets/models/hair-${name}.glb`),
     // 무료판 몸은 속옷 차림 어른 체형 → 연습복을 칠하고, 머리를 키우고 키를 140cm 로(아이 비율에 가깝게)
     dress: ['Superhero_Female'], headScale: 1.15, height: 1.4 },
   vroid: { label: '캐릭터형', kind: 'vrm', url: url('../../../assets/models/yuha.vrm') },
@@ -33,16 +34,17 @@ const defaultLoaders = {
 
 // 연습복 색 — 뼈 이름(UE 방식)으로 부위를 나눈다. 좌우 신발은 오른쪽 주황·왼쪽 초록(설계 메모 §4.3).
 export const OUTFIT = { leotard: 0xd4537e, leggings: 0x3c3489, skin: 0xe9b99b, shoeR: 0xd85a30, shoeL: 0x1d9e75, hair: 0x3a2a22 };
-export function outfitColor(bone) {
+// palette: 꾸미기로 바꾼 레오타드·레깅스·피부 색(신발은 늘 OUTFIT 의 좌우 색)
+export function outfitColor(bone, palette = OUTFIT) {
   const b = bone.toLowerCase();
   if (/^(foot|ball)/.test(b)) return b.endsWith('_l') ? OUTFIT.shoeL : OUTFIT.shoeR;
-  if (/^calf/.test(b)) return OUTFIT.leggings;
-  if (/^(pelvis|spine|thigh|upperarm|clavicle|root)/.test(b)) return OUTFIT.leotard;
-  return OUTFIT.skin;
+  if (/^calf/.test(b)) return palette.leggings;
+  if (/^(pelvis|spine|thigh|upperarm|clavicle|root)/.test(b)) return palette.leotard;
+  return palette.skin;
 }
 
 // 이름이 names 에 든 스킨 메시의 텍스처를 버리고, 꼭짓점마다 가장 많이 묶인 뼈의 연습복 색을 칠한다(툰 재질).
-export function dressUp(root, names) {
+export function dressUp(root, names, palette = OUTFIT) {
   const meshes = [];
   root.traverse(o => { if (o.isSkinnedMesh && names.includes(o.name)) meshes.push(o); });
   for (const o of meshes) {
@@ -54,7 +56,7 @@ export function dressUp(root, names) {
       let best = 0, bw = -1;
       for (let k = 0; k < 4; k++) { const wk = w.getComponent(i, k); if (wk > bw) { bw = wk; best = idx.getComponent(i, k); } }
       const name = o.skeleton.bones[best]?.name ?? '';
-      if (!cache.has(name)) cache.set(name, outfitColor(name));
+      if (!cache.has(name)) cache.set(name, outfitColor(name, palette));
       c.setHex(cache.get(name));
       colors.set([c.r, c.g, c.b], i * 3);
     }
@@ -74,16 +76,36 @@ function toonify(root, skip) {
   });
 }
 
-// 따로 받은 머리카락(같은 이름의 뼈대로 스키닝됨)을 몸의 뼈에 다시 묶어 몸 장면에 붙인다
-async function attachHair(root, byName, hair) {
-  const { Skeleton } = await import('three');
-  const meshes = [];
-  hair.scene.traverse(o => { if (o.isSkinnedMesh) meshes.push(o); });
+// 따로 받은 머리카락(같은 이름의 뼈대로 스키닝됨)을 몸의 뼈에 다시 묶어 몸 장면에 붙인다. 바꿀 때 뺄 수 있게 표시해 둔다.
+// 머리카락 파일에서 스킨 메시 목록을 한 번만 뽑아 둔다(몸에 붙이면 원래 장면에서 빠지므로 목록으로 기억)
+const hairMeshes = gltf => { const out = []; gltf.scene.traverse(o => { if (o.isSkinnedMesh) out.push(o); }); return out; };
+
+function attachHair(root, byName, meshes, color) {
   for (const o of meshes) {
     const bones = o.skeleton.bones.map(b => byName.get(b.name) ?? b);
-    o.bind(new Skeleton(bones, o.skeleton.boneInverses), o.bindMatrix);
+    o.bind(new THREE.Skeleton(bones, o.skeleton.boneInverses), o.bindMatrix);
+    o.material = new THREE.MeshToonMaterial({ color });
+    o.userData.hair = true;
     root.add(o);
   }
+}
+
+// 꾸미기 적용: 연습복·피부 색을 다시 칠하고, 머리 모양이 바뀌었으면 머리카락을 바꿔 끼운다(머리카락 파일은 한 번만 읽음)
+export async function applyLook(model, look, { loaders = defaultLoaders } = {}) {
+  const m = model.spec;
+  if (!m?.dress) return;
+  const hex = h => new THREE.Color(h).getHex();
+  dressUp(model.root, m.dress, { leotard: hex(look.leotard), leggings: hex(look.leggings), skin: hex(look.skin) });
+  if (model.hair !== look.hair) {
+    const old = [];
+    model.root.traverse(o => { if (o.userData.hair) old.push(o); });
+    for (const o of old) o.removeFromParent();
+    model.hairs ??= new Map();
+    if (!model.hairs.has(look.hair)) model.hairs.set(look.hair, hairMeshes(await loaders.gltf(m.hairUrl(look.hair))));
+    attachHair(model.root, model.byName, model.hairs.get(look.hair), look.hairColor);
+    model.hair = look.hair;
+  }
+  model.root.traverse(o => { if (o.userData.hair) o.material.color.set(look.hairColor); });
 }
 
 const doll = (message) => ({ ...createMannequin(), fallback: !!message, message });
@@ -119,12 +141,16 @@ async function readModel(m, loaders) {
   if (missing.length) return doll(`${m.label} 모델의 뼈를 못 찾았어요: ${missing.join(', ')}`);
   const byName = new Map();
   gltf.scene.traverse(o => { if (o.name) byName.set(o.name, o); });
-  if (m.hair) await attachHair(gltf.scene, byName, await loaders.gltf(m.hair));
+  let hairs = null;
+  if (m.hair) {
+    hairs = new Map([[m.hair, hairMeshes(await loaders.gltf(m.hairUrl(m.hair)))]]);
+    attachHair(gltf.scene, byName, hairs.get(m.hair), OUTFIT.hair);
+  }
   if (m.dress) { dressUp(gltf.scene, m.dress); toonify(gltf.scene, m.dress); }
   if (m.headScale) byName.get(map.head)?.scale.multiplyScalar(m.headScale);
   if (m.height) {
     const box = new THREE.Box3().setFromObject(gltf.scene, true);
     gltf.scene.scale.multiplyScalar(m.height / (box.max.y - box.min.y));
   }
-  return { root: gltf.scene, boneOf: n => byName.get(map[n]) ?? null, fallback: false };
+  return { root: gltf.scene, boneOf: n => byName.get(map[n]) ?? null, fallback: false, spec: m, byName, hair: m.hair, hairs };
 }
