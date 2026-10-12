@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { OutlineEffect } from 'three/addons/effects/OutlineEffect.js';
 import { createRig, addFootMarkers } from './rig.js';
-import { playhead, lerpPose3, ease } from '../../domain/pose3d.js';
+import { playhead, lerpPose3, splinePose3, ease } from '../../domain/pose3d.js';
 
 const FRAME_MS = 33;
 const THEMES = {
@@ -58,7 +58,7 @@ export function createViewer(container) {
     stop();
     playing = { motion, opts };
     const { slow = 1, still = false, onCycle, onStep } = opts;
-    const { frames, ms, loop } = motion;
+    const { frames, durations, loop } = motion;
     if (!rig) return;
     const draw = (pose, dt) => { rig.apply(pose); model.update?.(dt); render(); };
     if (still || frames.length < 2) { draw(frames[still ? frames.length - 1 : 0], 0); return; }
@@ -67,8 +67,10 @@ export function createViewer(container) {
       if (document.hidden) { pausedAt ??= performance.now(); timer = setTimeout(tick, 250); return; }
       if (pausedAt != null) { t0 += performance.now() - pausedAt; pausedAt = null; }
       const now = performance.now();
-      const h = playhead(now - t0, frames.length, ms, { slow, loop });
-      draw(lerpPose3(frames[h.i], frames[h.j], ease(h.t)), (now - last) / 1000);
+      const h = playhead(now - t0, frames.length, 700, { slow, loop, durations });
+      // 보통 속도: 곡선으로 멈춤 없이 / 느리게: 장면마다 멈추며 하나씩(자세 확인용)
+      const pose = slow > 1 ? lerpPose3(frames[h.i], frames[h.j], ease(h.t)) : splinePose3(frames, h.i, h.j, h.t, loop);
+      draw(pose, (now - last) / 1000);
       last = now;
       if (h.cycle !== lastCycle) { lastCycle = h.cycle; onCycle?.(h.cycle); }
       const step = h.t > 0.5 ? h.j : h.i;

@@ -13,41 +13,57 @@ const P = o => ({
 // 아래팔이 가슴 앞을 가로지름: fwd 를 90 으로 하면 out 이 효과가 없어서(정면 수평에서 겹침) 25 로 두고 안쪽(-80)으로
 const armsChest = { armR: { upper: [35, 25], fore: [25, -80] }, armL: { upper: [35, 25], fore: [25, -80] } };
 
+// durations[i] = 장면 i 에서 다음 장면까지 걸리는 시간(ms). restart 동작의 마지막 값은 끝 자세에서 멈추는 시간.
 export const MOTIONS3D = {
   // J03 오프아이스 왈츠 점프: 왼발 앞으로 디디며 출발 → 반 바퀴(반시계) → 오른발 착지, 왼다리 뒤로 쭉
   waltzJump: {
-    camera: 'diag', loop: 'restart', ms: 650, props: [],
+    camera: 'diag', loop: 'restart', props: [],
     note: '참고: iCoachSkating 왈츠 점프 강의 요약(R. Tebby·F. Carroll — 도약 때 팔 앞으로·프리 무릎 들기, 머리 들고 진행 방향, 착지 때 팔 벌려 회전 멈춤), 2026-10-12 확인',
+    durations: [400, 350, 150, 160, 160, 180, 900],
     frames: [
+      P({ armR: { upper: [10, 30], fore: [15, 30] }, armL: { upper: [10, 30], fore: [15, 30] } }),
       P({ torso: { fwd: 10 }, armR: { upper: [-40, 15], fore: [-30, 15] }, armL: { upper: [-40, 15], fore: [-30, 15] },
         legL: { thigh: [30, 0], shin: [0, 0], foot: [90, 0] }, legR: { thigh: [-30, 0], shin: [-45, 0], foot: [40, 0] } }),
       P({ yaw: 30, air: 0.05, armR: { upper: [100, 15], fore: [110, 15] }, armL: { upper: [100, 15], fore: [110, 15] },
         legL: { thigh: [-5, 0], shin: [-5, 0], foot: [30, 0] }, legR: { thigh: [70, 0], shin: [40, 0], foot: [60, 0] } }),
-      P({ yaw: 110, air: 0.14, ...armsChest,
+      P({ yaw: 80, air: 0.13, armR: { upper: [60, 25], fore: [80, -30] }, armL: { upper: [60, 25], fore: [80, -30] },
+        legL: { thigh: [0, 0], shin: [0, 0], foot: [30, 0] }, legR: { thigh: [30, 0], shin: [10, 0], foot: [40, 0] } }),
+      P({ yaw: 150, air: 0.12, ...armsChest,
         legR: { thigh: [5, 0], shin: [0, 0], foot: [30, 0] }, legL: { thigh: [10, -5], shin: [0, -5], foot: [30, 0] } }),
+      P({ yaw: 180, torso: { fwd: 8 }, armR: { upper: [20, 60], fore: [20, 65] }, armL: { upper: [20, 60], fore: [20, 65] },
+        legR: { thigh: [15, 0], shin: [-5, 0], foot: [70, 0] }, legL: { thigh: [-25, 8], shin: [-30, 8], foot: [-40, 8] } }),
       P({ yaw: 180, torso: { fwd: 15 }, armR: { upper: [20, 80], fore: [20, 85] }, armL: { upper: [20, 80], fore: [20, 85] },
         legR: { thigh: [20, 0], shin: [-15, 0], foot: [90, 0] }, legL: { thigh: [-40, 10], shin: [-40, 10], foot: [-60, 10] } }),
     ],
   },
   // J01 스쿼트 점프: 무릎은 발끝 방향 → 팔 휘둘러 높이 → 무릎 굽혀 사뿐히 착지
   squatJump: {
-    camera: 'side', loop: 'wrap', ms: 550, props: [],
+    camera: 'side', loop: 'wrap', props: [],
     note: '참고: 연습 체크포인트(무릎은 발끝 방향·팔 휘둘러·무릎 굽혀 착지) 그대로, 2026-10-12 확인',
+    durations: [450, 200, 150, 220, 120, 450],
     frames: [
+      P({}),
       P({ torso: { fwd: 35 }, head: { fwd: 15 }, armR: { upper: [-45, 10], fore: [-35, 10] }, armL: { upper: [-45, 10], fore: [-35, 10] },
         legR: { thigh: [80, 8], shin: [-15, 8], foot: [90, 0] }, legL: { thigh: [80, 8], shin: [-15, 8], foot: [90, 0] } }),
+      P({ air: 0.02, torso: { fwd: 15 }, armR: { upper: [95, 10], fore: [105, 10] }, armL: { upper: [95, 10], fore: [105, 10] },
+        legR: { thigh: [30, 5], shin: [-10, 5], foot: [50, 0] }, legL: { thigh: [30, 5], shin: [-10, 5], foot: [50, 0] } }),
       P({ air: 0.12, armR: { upper: [165, 10], fore: [170, 10] }, armL: { upper: [165, 10], fore: [170, 10] },
         legR: { thigh: [0, 4], shin: [0, 4], foot: [30, 0] }, legL: { thigh: [0, 4], shin: [0, 4], foot: [30, 0] } }),
+      P({ torso: { fwd: 10 }, armR: { upper: [110, 10], fore: [115, 10] }, armL: { upper: [110, 10], fore: [115, 10] },
+        legR: { thigh: [25, 6], shin: [-10, 6], foot: [70, 0] }, legL: { thigh: [25, 6], shin: [-10, 6], foot: [70, 0] } }),
       P({ torso: { fwd: 30 }, head: { fwd: 10 }, armR: { upper: [70, 10], fore: [80, 10] }, armL: { upper: [70, 10], fore: [80, 10] },
         legR: { thigh: [75, 8], shin: [-15, 8], foot: [90, 0] }, legL: { thigh: [75, 8], shin: [-15, 8], foot: [90, 0] } }),
     ],
   },
-  // S05 업라이트 스핀 축 자세(버티기): 팔 벌려 준비 → 팔 가슴 앞, 프리 발(왼발)은 오른 무릎 옆에서 버티기
+  // S05 업라이트 스핀 축 자세(버티기): 팔 벌려 준비 → 팔 모으며 무릎 들기 → 팔 가슴 앞, 프리 발(왼발)은 오른 무릎 옆에서 버티기
   spinAxis: {
-    camera: 'front', loop: 'restart', ms: 900, props: [],
+    camera: 'front', loop: 'restart', props: [],
     note: '참고: iCoachSkating 오프아이스 스핀 수업 요약(K. Ryan — 팔 모아 가슴 앞, 배꼽을 등 쪽으로, 시선 위), 2026-10-12 확인',
+    durations: [700, 450, 1500],
     frames: [
       P({ armR: { upper: [60, 60], fore: [70, 70] }, armL: { upper: [60, 60], fore: [70, 70] } }),
+      P({ armR: { upper: [45, 40], fore: [60, 20] }, armL: { upper: [45, 40], fore: [60, 20] },
+        legL: { thigh: [25, 15], shin: [-10, -15], foot: [40, -10] } }),
       P({ ...armsChest, legR: { thigh: [0, 2], shin: [0, 2], foot: [90, 0] },
         legL: { thigh: [45, 25], shin: [-30, -40], foot: [20, -20] } }),
     ],
@@ -60,7 +76,7 @@ export function motion3dFor(poseId) {
   if (!p) return null;
   const frames = framesOf(p);
   return {
-    frames: frames.map(fromPose2d), ms: p.ms ?? 700, loop: 'wrap',
+    frames: frames.map(fromPose2d), durations: frames.map(() => p.ms ?? 700), loop: 'wrap',
     camera: frames[0].view === 'front' ? 'front' : 'side', props: propsOf(p), note: '2D 그림 자동 변환(초안)', source: 'auto',
   };
 }

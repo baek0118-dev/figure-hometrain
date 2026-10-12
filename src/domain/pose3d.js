@@ -81,17 +81,33 @@ export const lerpPose3 = (a, b, t) => ({ ...lerpAny(a, b, t), anchor: a.anchor }
 
 export const ease = t => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
 
-// 지금 몇 번째 장면 사이인지. wrap: 마지막→처음으로 이어 움직임. restart: 마지막 장면에서 한 구간 멈춘 뒤 처음으로 순간 이동.
-// 한 바퀴(n 구간) = cycle 1 증가 → 횟수 동작의 1회.
-export function playhead(elapsedMs, n, stepMs, { slow = 1, loop = 'wrap' } = {}) {
-  const step = stepMs * slow;
-  const hold = slow > 1 ? 0.4 : 0;
-  const total = elapsedMs / step;
-  const cycle = Math.floor(total / n);
-  const pos = total - cycle * n;
-  const i = Math.floor(pos);
+// 곡선 잇기(캣멀-롬): 장면 위치는 그대로 지나가되 장면에서 멈추지 않고 속도가 이어진다(보통 속도용).
+// 앞뒤 이웃 장면: wrap 은 돌아가며, restart 는 끝에서 같은 장면을 한 번 더 쓴다. air 는 0 아래로 내려가지 않게.
+const cr = (p0, p1, p2, p3, t) => 0.5 * (2 * p1 + (p2 - p0) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t + (3 * p1 - p0 - 3 * p2 + p3) * t * t * t);
+function splineAny(a, b, c, d, t) {
+  if (typeof b === 'number') return cr(a ?? b, b, c ?? b, d ?? c ?? b, t);
+  if (Array.isArray(b)) return b.map((v, k) => splineAny(a?.[k], v, c?.[k], d?.[k], t));
+  if (b && typeof b === 'object') return Object.fromEntries(Object.keys(b).map(k => [k, splineAny(a?.[k], b[k], c?.[k], d?.[k], t)]));
+  return b;
+}
+export function splinePose3(frames, i, j, t, loop = 'wrap') {
+  const n = frames.length;
+  const prev = loop === 'wrap' ? (i - 1 + n) % n : Math.max(0, i - 1);
+  const next = loop === 'wrap' ? (j + 1) % n : Math.min(n - 1, j + 1);
+  const p = splineAny(frames[prev], frames[i], frames[j], frames[next], t);
+  return { ...p, anchor: frames[i].anchor, air: Math.max(0, p.air ?? 0) };
+}
+
+// 지금 몇 번째 장면 사이인지. wrap: 마지막→처음으로 이어 움직임. restart: 마지막 장면에서 그 구간만큼 멈춘 뒤 처음으로 순간 이동.
+// durations[i] = 장면 i 에서 다음 장면까지 걸리는 시간(없으면 모두 stepMs). 한 바퀴 = cycle 1 증가 → 횟수 동작의 1회.
+export function playhead(elapsedMs, n, stepMs, { slow = 1, loop = 'wrap', durations } = {}) {
+  const d = (durations ?? Array(n).fill(stepMs)).map(x => x * slow);
+  const total = d.reduce((a, b) => a + b, 0);
+  const cycle = Math.floor(elapsedMs / total);
+  let r = elapsedMs - cycle * total, i = 0;
+  while (i < n - 1 && r >= d[i]) { r -= d[i]; i++; }
   if (loop === 'restart' && i === n - 1) return { i, j: i, t: 0, cycle };
-  const j = (i + 1) % n;
-  const t = Math.max(0, (pos - i - hold) / (1 - hold));
-  return { i, j, t, cycle };
+  const hold = slow > 1 ? 0.4 : 0;   // 느리게 볼 땐 각 자세에서 40% 동안 멈춤
+  const t = Math.max(0, (r / d[i] - hold) / (1 - hold));
+  return { i, j: (i + 1) % n, t, cycle };
 }
