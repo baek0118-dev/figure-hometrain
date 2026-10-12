@@ -7,7 +7,7 @@ import { DEFAULT_LOOK } from './look.js';
 const url = p => new URL(p, import.meta.url).href;
 
 export const MODELS = {
-  doll: { label: '인형(임시)', kind: 'code' },
+  doll: { label: '인형', kind: 'code' }, // 기본(사용자 결정 2026-10-12: 사람형은 오히려 몰입감을 깸)
   human: { label: '사람형', kind: 'gltf', url: url('../../../assets/models/human.glb'), hair: DEFAULT_LOOK.hair, hairUrl: name => url(`../../../assets/models/hair-${name}.glb`),
     // 무료판 몸은 속옷 차림 어른 체형 → 연습복을 칠하고, 머리를 키우고 키를 140cm 로(아이 비율에 가깝게)
     dress: ['Superhero_Female'], headScale: 1.15, height: 1.4 },

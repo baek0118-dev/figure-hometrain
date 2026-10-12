@@ -46,7 +46,7 @@
   <h1>⛸ 3D 동작 시험판</h1>
   <div class="how">
     유하가 매트에서 <b>2m 떨어져</b> 보고 따라 해 보세요. <b>주황 = 오른발, 초록 = 왼발</b>이에요.<br>
-    사람형·캐릭터형 중 어느 쪽이 더 따라 하기 쉬운지 골라 주세요.
+    인형으로 보여 줘요. 사람형·캐릭터형도 버튼으로 바꿔 볼 수 있어요.
   </div>
 </header>
 <div class="page">
@@ -67,19 +67,19 @@
 </section>
 </div>
 <script type="module">
-import { EXERCISES } from '../src/data/exercises.js?v=v-89ab36c92805';
-import { motion3dFor } from '../src/data/motions3d.js?v=v-89ab36c92805';
-import { createStickman } from '../src/ui/components/stickman.js?v=v-89ab36c92805';
+import { EXERCISES } from '../src/data/exercises.js?v=v-4783e61491ba';
+import { motion3dFor } from '../src/data/motions3d.js?v=v-4783e61491ba';
+import { createStickman } from '../src/ui/components/stickman.js?v=v-4783e61491ba';
 // 3D 쪽(three·import map 이 필요한 것)은 아래 try 안에서 불러온다 — 못 불러오면 막대 그림으로 대신 보여 주기 위해
 let BASE_FACTOR = 2, SLOW_FACTOR = 4;
-let MODELS = { doll: { label: '인형(임시)' }, human: { label: '사람형' }, vroid: { label: '캐릭터형' } };
+let MODELS = { doll: { label: '인형' }, human: { label: '사람형' }, vroid: { label: '캐릭터형' } };
 let loadModel = async () => ({});
 let applyLook = async () => {};
 let LOOK = null; // look.js (꾸미기 값)
 
 const TRY = ['J03', 'J01', 'S05'];
 const $ = id => document.getElementById(id);
-const state = { ex: TRY[0], model: 'human', cam: null, slow: false, mirror: false, theme: 'day' };
+const state = { ex: TRY[0], model: 'doll', cam: null, slow: false, mirror: false, theme: 'day' };
 const msg = t => { $('msg').textContent = t ?? ''; $('msg').style.display = t ? 'block' : 'none'; };
 
 function buttons(host, items, isOn, onClick) {
@@ -190,7 +190,7 @@ await useModel('doll');
 render();
 state.model = wanted;
 render();
-useModel(state.model).then(play);
+if (wanted !== 'doll') useModel(state.model).then(play); // 기본이 인형이면 다시 읽지 않음
 </script>
 </body>
 </html>
