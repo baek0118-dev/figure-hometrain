@@ -189,6 +189,11 @@ export const POSES = {
     F({ torso: 0, head: 15, legR: [88, 88, 180], legL: [-88, -88, -180], armR: [95, 100], armL: [-95, -100] }),
   ], 1500),
   bridge: P({ torso: 125, head: 160, armR: [15, 5], armL: [12, 3], legR: [-35, 5, 90], legL: [-38, 3, 90], anchor: 'center' }),
+  // 엉덩이 들기(글루트 브릿지): 등 대고 누워 무릎 세움 → 엉덩이만 들기. 팔은 몸 옆 바닥.
+  gluteBridge: A([
+    P({ ...lying, legR: [145, 30, 120], legL: [142, 28, 120], armR: [95, 95], armL: [92, 92] }),
+    P({ ...lying, torso: -108, head: -100, legR: [115, 5, 100], legL: [112, 3, 100], armR: [80, 80], armL: [78, 78] }),
+  ], 1400),
   lungeStretch: A([
     P({ torso: 0, legR: [75, -5, 90], legL: [-45, -90, -90], armR: [40, 70], armL: [35, 65], anchor: 'center' }),
     P({ torso: -8, head: -5, legR: [80, -5, 90], legL: [-50, -90, -90], armR: [170, 175], armL: [165, 170], anchor: 'center' }),

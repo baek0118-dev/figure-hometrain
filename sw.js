@@ -1,6 +1,6 @@
 // 서비스 워커 — 설계 §1.1, §3.1. 앱 파일 전부를 미리 저장(오프라인: 공원·놀이터), 같은 주소 요청은 캐시 먼저.
 // FILES·VERSION 은 tools/update-sw.mjs 가 채운다. 새 버전은 기다렸다가 앱이 "새로고침"을 보내면 바뀐다.
-const VERSION = 'v-f357ae6633bc';
+const VERSION = 'v-bf173709d19a';
 const FILES = [
   "./",
   "index.html",
@@ -11,6 +11,7 @@ const FILES = [
   "icons/icon-512.png",
   "icons/maskable-512.png",
   "vendor/anthropic-sdk-0.133.0.js",
+  "vendor/fonts/PretendardVariable-ksx-1.3.9.woff2",
   "vendor/tailwind-3.4.17.js",
   "vendor/three/addons/effects/OutlineEffect.js",
   "vendor/three/three.core.min.js",
@@ -23,15 +24,19 @@ const FILES = [
   "src/ai/trim.js",
   "src/app/store.js",
   "src/data/exercises.js",
+  "src/data/motions-video.js",
   "src/data/motions3d.js",
   "src/data/poses.js",
   "src/data/templates.js",
+  "src/data/videos.js",
   "src/domain/adapt.js",
   "src/domain/cart.js",
   "src/domain/cheer.js",
   "src/domain/dates.js",
   "src/domain/guard.js",
   "src/domain/kinematics.js",
+  "src/domain/landmarks.js",
+  "src/domain/load.js",
   "src/domain/modes.js",
   "src/domain/planner.js",
   "src/domain/pose3d.js",
@@ -46,17 +51,22 @@ const FILES = [
   "src/storage/local.js",
   "src/storage/media.js",
   "src/storage/repo.js",
+  "src/ui/components/figure.js",
   "src/ui/components/stickman.js",
+  "src/ui/components/videobox.js",
   "src/ui/format.js",
+  "src/ui/icons.js",
   "src/ui/screens/evaluate.js",
   "src/ui/screens/menu.js",
   "src/ui/screens/player.js",
   "src/ui/screens/settings.js",
   "src/ui/screens/start.js",
   "src/ui/screens/stats.js",
+  "src/ui/three/body.js",
   "src/ui/three/mannequin.js",
   "src/ui/three/rig.js",
-  "src/ui/three/viewer.js"
+  "src/ui/three/viewer.js",
+  "src/ui/uiconfig.js"
 ];
 const CACHE = `yuha-${VERSION}`;
 

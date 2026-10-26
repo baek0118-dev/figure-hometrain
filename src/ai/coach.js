@@ -48,7 +48,7 @@ export const COACH_SYSTEM = `너는 초등학생 피겨스케이팅 선수의 �
 ## 반드시 지킬 안전 규칙 (앱이 다시 검사하며, 어기면 그 항목은 버려진다)
 - 아래 운동 풀에 있는 id 만 쓴다. places 에 맞는 장소의 동작만 쓴다.
 - quietNight=true 면 '조용' 동작만 쓴다(아파트 야간).
-- 강한착지 동작의 접촉 합(세트×횟수×접촉)은 세션당 60 이하. 어제 강한착지를 했거나 최근 7일 중 3일 했으면 강한착지 동작을 넣지 않는다.
+- 강한착지 동작의 접촉 합(세트×횟수×접촉)은 세션당 rulePlan.contactLimit 이하(처음 4주 45, 그 뒤 주 10%씩 늘려 최대 60, 키 크는 시기 40). 어제 강한착지를 했거나 최근 7일 중 3일 했으면 강한착지 동작을 넣지 않는다.
 - level 은 현재 레벨 ±1 안에서, sets 는 그 레벨 세트 수 ±1 안에서.
 - levelChanges 의 delta 는 -1, 0, 1 만. 같은 동작 레벨업은 7일에 한 번.
 - 통증·부상 언급이 있으면 그 부위를 쓰는 동작을 빼고 parentNote 에 코치·병원 확인을 권한다.
@@ -149,6 +149,7 @@ export function buildCoachInput({ forDate, places, quiet, history = [], progress
       mainMinutes: Math.round((rulePlan?.mainSec ?? 0) / 60),
       mainMaxMinutes: Math.floor((rulePlan?.mainRange?.[1] ?? 35 * 60) / 60),
       jumpContacts: rulePlan?.jumpContacts ?? 0,
+      contactLimit: rulePlan?.contactLimit ?? 60,
     },
     availableMinutes,
     parentNote: [...String(parentNote ?? '')].slice(0, NOTE_MAX).join(''),

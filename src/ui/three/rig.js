@@ -23,6 +23,7 @@ const LOW = [['rightFoot', 'sole'], ['leftFoot', 'sole'], ['rightToes', 0], ['le
   ['rightLowerLeg', 0], ['leftLowerLeg', 0], ['hips', 0], ['chest', 0], ['head', 0]];
 
 const V = a => new THREE.Vector3(...a);
+const ok = v => v && v.lengthSq() > 1e-12; // 사람을 놓친 값(길이 0)은 그 뼈를 쉬는 자세로 둠
 const basis = (up, fwd) => {
   const y = up.clone().normalize();
   const z = fwd.clone().addScaledVector(y, -fwd.dot(y)).normalize();
@@ -63,23 +64,60 @@ export function createRig(root, boneOf) {
     node.updateMatrixWorld(true);
   };
 
+  // 'planted' 기준점: 장면마다 더 낮은 발을 디딘 발로 보고 그 발의 바닥 자리를 고정(영상 동작 — 한 발 서기·걸음이 있어 기준점 하나로는 미끄러짐).
+  // 디딘 발이 바뀌면 그 순간의 자리를 새로 고정한다. 동작이 처음으로 돌아갈 때 resetPlant() 로 지운다.
+  let plant = null; // { foot, x, z, off: [x, z] }
+  const PLANT_SWITCH = 0.02; // 키에 대한 비율 — 이만큼 더 낮아야 디딘 발을 바꿈(두 발이 비슷할 때 깜빡이지 않게)
+  function plantedOffset(airborne) {
+    const r = wp(bones.get('rightFoot').node), l = wp(bones.get('leftFoot').node);
+    const pos = { rightFoot: r, leftFoot: l };
+    // 체공 중에는 몸 자리를 그대로 두고(공중의 발을 축으로 몸이 공전하지 않게 — Codex 리뷰 2026-10-25),
+    // 착지한 첫 장면에서 그때 더 낮은 발을 새로 고정한다.
+    if (plant && airborne) { plant.air = true; return plant.off; }
+    if (plant?.air) {
+      const foot = r.y <= l.y ? 'rightFoot' : 'leftFoot';
+      plant = { foot, x: pos[foot].x + plant.off[0], z: pos[foot].z + plant.off[1], off: plant.off };
+    }
+    if (!plant) {
+      const foot = r.y <= l.y ? 'rightFoot' : 'leftFoot';
+      const off = [-(r.x + l.x) / 2, -(r.z + l.z) / 2];
+      plant = { foot, x: pos[foot].x + off[0], z: pos[foot].z + off[1], off };
+      return off;
+    }
+    const other = plant.foot === 'rightFoot' ? 'leftFoot' : 'rightFoot';
+    if (pos[other].y < pos[plant.foot].y - PLANT_SWITCH * height) {
+      plant = { foot: other, x: pos[other].x + plant.off[0], z: pos[other].z + plant.off[1], off: plant.off };
+    }
+    plant.off = [plant.x - pos[plant.foot].x, plant.z - pos[plant.foot].z];
+    return plant.off;
+  }
+
   function apply(pose) {
-    const d = poseDirs(pose);
+    const d = pose.dirs ?? poseDirs(pose);
     for (const r of bones.values()) r.node.quaternion.copy(r.local);
     root.position.set(0, 0, 0);
     root.updateMatrixWorld(true);
     for (const f of frames) {
       const t = f.pick(d);
+      const up = V(t.up), fwd = V(t.fwd);
+      if (!ok(up) || !ok(fwd.clone().addScaledVector(up.clone().normalize(), -fwd.dot(up.clone().normalize())))) continue;
       const rot = new THREE.Matrix4().multiplyMatrices(basis(V(t.up), V(t.fwd)), f.rest.clone().transpose());
       setWorld(f.r.node, new THREE.Quaternion().setFromRotationMatrix(rot).multiply(f.r.q));
     }
     for (const s of segs) {
+      if (!ok(V(s.pick(d)))) continue;
       const swing = new THREE.Quaternion().setFromUnitVectors(s.restDir, V(s.pick(d)).normalize());
       setWorld(s.r.node, swing.multiply(s.r.q));
     }
     // 바닥 놓기: 발 뼈는 발목에 있으니 발바닥 두께(sole)를 빼고, 나머지는 뼈 위치 그대로. 가장 낮은 곳 = 바닥.
     const minY = Math.min(...LOW.filter(([n]) => bones.has(n)).map(([n, off]) => wp(bones.get(n).node).y - (off === 'sole' ? sole : 0)));
     // 기준점: 골반 / 두 발 가운데 / 한 발 — 이 점의 x·z 를 가운데에 고정(서 있는 발이 미끄러지지 않게)
+    if (pose.anchor === 'planted') {
+      const [x, z] = plantedOffset((pose.air ?? 0) > 0);
+      root.position.set(x, -minY + (pose.air ?? 0) * height, z);
+      root.updateMatrixWorld(true);
+      return;
+    }
     const a = pose.anchor === 'feet'
       ? wp(bones.get('rightFoot').node).add(wp(bones.get('leftFoot').node)).multiplyScalar(0.5)
       : wp(bones.get({ footR: 'rightFoot', footL: 'leftFoot' }[pose.anchor] ?? 'hips').node);
@@ -87,5 +125,5 @@ export function createRig(root, boneOf) {
     root.updateMatrixWorld(true);
   }
 
-  return { apply, height, sole, bones };
+  return { apply, resetPlant: () => { plant = null; }, height, sole, bones };
 }

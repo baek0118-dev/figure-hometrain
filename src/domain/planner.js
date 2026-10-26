@@ -8,6 +8,7 @@ import {
 import { compileSession, estimateSec } from './timeline.js';
 import { weekday, addDays, daysBetween } from './dates.js';
 import { emptyProgress, LEVEL_MAX } from './adapt.js';
+import { contactLimitFor, CONTACT_MAX } from './load.js';
 
 export const MAIN_RANGE = {          // 본운동 목표(초)
   normal: [30 * 60, 35 * 60],
@@ -15,11 +16,11 @@ export const MAIN_RANGE = {          // 본운동 목표(초)
   recovery: [20 * 60, 25 * 60],
   rest: [15 * 60, 25 * 60],
 };
-export const CONTACT_LIMIT = 60;     // 세션당 점프 접촉
+export const CONTACT_LIMIT = CONTACT_MAX; // 세션당 점프 접촉 최대. 실제 상한은 plan.contactLimit (처음 4주 45 → 주 10% → 60, load.js)
 const SIZE_FROM = { short: 40 * 60, mini: 22 * 60, tooLate: 10 * 60 }; // 고른 시간이 이보다 적으면 한 단계 짧게
 const MAX_PER_SLOT = 4;
 const START_PER_SLOT = { focus: 3, other: 2 };
-const JUMP_DAYS_LIMIT = 3;           // 최근 7일
+const JUMP_DAYS_LIMIT = 2;           // 최근 7일 — 빙상 점프와 함께 주 2회(훈련 내용 검토 §3)
 const RESET_MODE_AFTER_DAYS = 3;     // 이만큼 쉬고 오면 보통 모드
 const REMOVED_SKIP_STREAK = 3;
 const REMOVED_SKIP_DAYS = 14;
@@ -147,7 +148,7 @@ function fitTime(main, pools, slots, range, ctx) {
   const [lo, hi] = range;
   const est = () => estimateSec(compileSession(main));
   const slotItems = k => main.filter(i => i.slot === k);
-  const canAddContacts = (item) => contacts([...main, item]) <= CONTACT_LIMIT;
+  const canAddContacts = (item) => contacts([...main, item]) <= ctx.limit;
 
   // 세트 +1 (현재 레벨 세트 + extra 까지, 최대 5). 집중 블록·세트 적은 것 먼저.
   function growSets(extra) {
@@ -156,7 +157,7 @@ function fitTime(main, pools, slots, range, ctx) {
       .sort((a, b) => Number(slots[b.slot].focus) - Number(slots[a.slot].focus) || a.sets - b.sets);
     for (const i of grow) {
       i.sets += 1;
-      if (est() <= hi && contacts(main) <= CONTACT_LIMIT) return true;
+      if (est() <= hi && contacts(main) <= ctx.limit) return true;
       i.sets -= 1;
     }
     return false;
@@ -221,10 +222,21 @@ function effectiveMode(progress, history, date) {
 }
 
 // ── 오늘의 메뉴 ──────────────────────────────────────
-export function buildRulePlan({ date, places = ['home'], quiet = false, history = [], progress = emptyProgress(), settings = {}, maxTotalSec = null }) {
+export function buildRulePlan({ date, places = ['home'], quiet = false, history = [], progress = emptyProgress(), settings = {}, maxTotalSec = null, restStretch = false }) {
   const tpl = templateFor(date);
   const mode = tpl.rest ? 'rest' : effectiveMode(progress, history, date);
   const notes = [];
+  const contactLimit = contactLimitFor({ history, date, settings });
+
+  // 일요일 완전 휴식(훈련 내용 검토 §116·132, 3단계): 메뉴 없이 쉬는 날. 원하면 스트레칭(쿨다운)만.
+  // 평일에도 쉬자는 안내·주 10시간 안내에서 '스트레칭만'을 고르면 같은 스트레칭만.
+  if (tpl.rest || restStretch) {
+    const items = restStretch ? fixedItems(COOLDOWN[cooldownPlace(places)], 'cooldown') : [];
+    return summarize({
+      date, places, quiet, mode, restDay: tpl.rest, fullRest: !restStretch, stretchOnly: restStretch,
+      slots: [], notes, restSuggested: false, contactLimit, items,
+    });
+  }
   let slots = tpl.slots.map(s => ({ ...s }));
 
   // "오늘은 짧게"(엄마가 직접 고름, 시간으로 자동 판단 안 함 — 사용자 결정 1011): full → short(짧은 웜업·쿨다운) → mini(블록 하나) → tooLate(스트레칭만)
@@ -236,7 +248,7 @@ export function buildRulePlan({ date, places = ['home'], quiet = false, history 
   if (size !== 'full') notes.push(size);
   if (size === 'tooLate') {
     return summarize({
-      date, places, quiet, mode, restDay: tpl.rest, tooLate: true, slots: [], notes,
+      date, places, quiet, mode, restDay: tpl.rest, tooLate: true, slots: [], notes, contactLimit,
       restSuggested: !!progress.restSuggested, items: fixedItems(fixedCool, 'cooldown'),
     });
   }
@@ -294,7 +306,7 @@ export function buildRulePlan({ date, places = ['home'], quiet = false, history 
       const ex = pools[k].shift();
       if (main.some(i => i.exerciseId === ex.id)) continue;
       const item = make(ex, k);
-      if (contacts([...main, item]) > CONTACT_LIMIT) continue;
+      if (contacts([...main, item]) > contactLimit) continue;
       main.push(item);
       n++;
     }
@@ -309,7 +321,7 @@ export function buildRulePlan({ date, places = ['home'], quiet = false, history 
     pools = keep.map(k => pools[k]);
   }
 
-  fitTime(main, pools, slots, range, { make });
+  fitTime(main, pools, slots, range, { make, limit: contactLimit });
   for (const i of main) { delete i.baseSets; delete i.floorSets; }
 
   const plan = {
@@ -318,6 +330,7 @@ export function buildRulePlan({ date, places = ['home'], quiet = false, history 
     slots: slots.map(({ category, focus }) => ({ category, focus })),
     notes,
     restSuggested: !!progress.restSuggested,
+    contactLimit,
     mainRange: range,
     items: [...fixedItems(fixedWarm, 'warmup'), ...main, ...fixedItems(fixedCool, 'cooldown')],
   };

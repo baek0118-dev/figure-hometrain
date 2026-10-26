@@ -36,12 +36,13 @@ export function createCoachFlow({ ai, repo, local }) {
       forDate, places, quiet, history, progress, rulePlan,
       examDate: settings.examDate, parentNote: settings.parentNote,
     });
-    return { forDate, params: buildCoachRequest(input) };
+    return { forDate, restDay: !!rulePlan.fullRest, params: buildCoachRequest(input) };
   }
 
   async function afterSession(session) {
     const p = paramsFor(session.id);
     if (!p) return { status: 'failed', error: 'nosession' };
+    if (p.restDay) return { status: 'restDay' }; // 다음 날이 일요일(완전 휴식) — 요청 안 함
     const r = await ai.call(p.params);
     if (r.ok) { save(p.forDate, r.data, session.id); return { status: 'saved', forDate: p.forDate }; }
     if (r.error === 'nokey') return { status: 'nokey' };

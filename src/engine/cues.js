@@ -13,6 +13,7 @@ export const CUES = {
   next: [n(G4, 0, 0.18, 'sine', 0.7), n(C5, 0.2, 0.3, 'sine', 0.7), n(G4, 0.6, 0.18, 'sine', 0.7), n(C5, 0.8, 0.3, 'sine', 0.7)],
   finish: [n(C5, 0, 0.15, 'triangle', 0.7), n(E5, 0.15, 0.15, 'triangle', 0.7), n(G5, 0.3, 0.15, 'triangle', 0.7), n(C6, 0.45, 0.6, 'triangle', 0.7)],
   tap: [n(1500, 0, 0.05, 'sine', 0.4)],                         // NEXT 눌림 확인
+  rep: [n(1175, 0, 0.07, 'sine', 0.35)],                        // 같이 세기 한 번
 };
 
 // beeps: 카운트·시작·휴식·반대쪽 / chimes: 세트 완료·다음 동작·세션 완료

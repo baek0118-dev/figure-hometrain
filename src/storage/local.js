@@ -2,10 +2,10 @@
 // iPad 사파리: 개인정보 보호 모드·저장소 막힘이면 접근 자체가 예외 → 'unavailable'.
 
 export const SCHEMA_VERSION = 1;
-const PREFIX = 'yuha.';
+const PREFIX = 'yuha.'; // 시험 모드(?sandbox=1)는 'yuha-test.' — 진짜 기록과 섞이지 않게
 
-export function createLocalStore(backend = globalThis.localStorage, { now = () => Date.now() } = {}) {
-  const k = key => PREFIX + key;
+export function createLocalStore(backend = globalThis.localStorage, { now = () => Date.now(), prefix = PREFIX } = {}) {
+  const k = key => prefix + key;
 
   function rawGet(key) {
     try { return backend.getItem(k(key)); } catch { return null; }

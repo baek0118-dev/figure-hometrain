@@ -18,6 +18,8 @@ export const DEFAULT_SETTINGS = {
   hidden: [],             // 보관함에서 숨긴 동작
   videoMap: {},           // exerciseId → clipId (IndexedDB)
   examDate: null,         // 'YYYY-MM-DD' 심사일 (AI 입력용)
+  growthSpurt: false,     // "요즘 키가 빨리 커요" → 점프 착지 상한 40 (domain/load.js)
+  iceWeek: null,          // { weekStart: 월요일, hours } 이번 주 빙상 시간 (엄마가 설정에서)
 };
 
 const byTime = (a, b) => a.date.localeCompare(b.date) || (a.startedAt ?? 0) - (b.startedAt ?? 0);

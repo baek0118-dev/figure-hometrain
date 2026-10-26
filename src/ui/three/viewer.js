@@ -45,13 +45,22 @@ export function createViewer(container) {
     renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
     frameCamera();
   }
+  // 따라가기: 디딘 발 고정(영상 동작)은 걸음만큼 몸이 옮겨 가서(왈츠 도움닫기 등) 카메라·바닥 원이 몸을 천천히 따라간다.
+  const center = new THREE.Vector3();
   function frameCamera() {
     const H = rig?.height ?? 1.4;
     const a = THREE.MathUtils.degToRad(CAMERA_DEG[cameraName]);
     const dist = (H * 1.35 / 2) / Math.tan(THREE.MathUtils.degToRad(15)) / Math.min(1, camera.aspect);
-    camera.position.set(Math.sin(a) * dist, H * 0.62, Math.cos(a) * dist);
-    camera.lookAt(0, H * 0.5, 0);
+    camera.position.set(center.x + Math.sin(a) * dist, H * 0.62, center.z + Math.cos(a) * dist);
+    camera.lookAt(center.x, H * 0.5, center.z);
     floor.scale.setScalar(H / 1.4);
+    floor.position.set(center.x, 0, center.z);
+  }
+  function follow(pose, jump, dt) {
+    const want = pose.anchor === 'planted' ? model.root.position : { x: 0, z: 0 };
+    const k = jump ? 1 : 1 - Math.exp(-dt / 0.2); // 약 0.2초 늦게 부드럽게(기기 속도와 무관하게 시간으로)
+    center.x += (want.x - center.x) * k; center.z += (want.z - center.z) * k;
+    frameCamera();
   }
   const render = () => outline.render(scene, camera);
 
@@ -69,7 +78,9 @@ export function createViewer(container) {
     const { slow = 1, still = false, onCycle, onStep } = opts;
     const { frames, durations, loop } = motion;
     if (!rig) return;
-    const draw = (pose, dt) => { rig.apply(pose); model.update?.(dt); render(); };
+    if (!opts.keepPlant) rig.resetPlant?.(); // keepPlant: 한 장면씩 그려 확인할 때(도구) 앞 장면의 디딘 발 자리를 이어 감
+    let first = !opts.keepPlant || still; // 한 장면만 그릴 때는 바로 맞춤
+    const draw = (pose, dt) => { rig.apply(pose); follow(pose, first, dt); first = false; model.update?.(dt); render(); };
     if (still || frames.length < 2) { draw(frames[still ? frames.length - 1 : 0], 0); return; }
     let t0 = performance.now(), last = t0, lastCycle = 0, lastStep = -1, pausedAt = null;
     const tick = () => {
@@ -77,6 +88,7 @@ export function createViewer(container) {
       if (pausedAt != null) { t0 += performance.now() - pausedAt; last = performance.now(); pausedAt = null; }
       const now = performance.now();
       const h = playhead(now - t0, frames.length, 700, { slow, loop, durations });
+      if (h.cycle !== lastCycle) { rig.resetPlant?.(); first = true; } // 처음 장면으로 돌아가면 디딘 발 자리·카메라도 처음부터
       // 보통 속도·느리게 모두 같은 곡선(멈춤 없음), 느리게는 시간만 늘어남
       draw(splinePose3(frames, h.i, h.j, h.t, loop), frameDt(now, last));
       last = now;

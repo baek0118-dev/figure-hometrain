@@ -31,6 +31,8 @@ export function guardAiPlan(ai, ctx) {
   const fixes = [];
   const reject = why => ({ rejected: true, plan: null, fixes: [...fixes, why] });
 
+  // 쉬는 날·스트레칭만·너무 늦은 날엔 본운동을 다시 넣지 않음
+  if (rulePlan.fullRest || rulePlan.stretchOnly || rulePlan.tooLate) return reject('본운동 없는 날');
   if (!ai || ai.forDate !== date) return reject('forDate 불일치');
   if (!Array.isArray(ai.items) || ai.items.length === 0) return reject('본운동 없음');
 
@@ -74,10 +76,11 @@ export function guardAiPlan(ai, ctx) {
   // 블록 순서대로 정렬 (같은 블록은 붙어 있게)
   main.sort((a, b) => a.slot - b.slot);
 
-  // 2) 점프 접촉 상한
-  if (contacts(main) > CONTACT_LIMIT) {
-    fixes.push(`contacts ${contacts(main)}→≤${CONTACT_LIMIT}`);
-    while (contacts(main) > CONTACT_LIMIT) {
+  // 2) 점프 접촉 상한 (규칙 메뉴와 같은 상한: 처음 4주 45 → 주 10% → 60, 키 크는 시기 40)
+  const limit = rulePlan.contactLimit ?? CONTACT_LIMIT;
+  if (contacts(main) > limit) {
+    fixes.push(`contacts ${contacts(main)}→≤${limit}`);
+    while (contacts(main) > limit) {
       const imp = main.filter(i => byId(i.exerciseId).impact);
       const big = imp.filter(i => i.sets > 1).sort((a, b) => b.sets - a.sets)[0];
       if (big) big.sets -= 1;

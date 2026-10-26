@@ -41,12 +41,14 @@
   <h1>⛸ 3D 동작 시험판</h1>
   <div class="how">
     유하가 매트에서 <b>2m 떨어져</b> 보고 따라 해 보세요. <b>주황 = 오른발, 초록 = 왼발</b>이에요.<br>
-    그림은 3D 인형이에요.
+    <b>몸</b>(새 사람형 · 지금 인형)과 <b>움직임</b>(영상에서 뽑음 · 손으로 만듦)을 바꿔 가며 비교해 보세요.
   </div>
 </header>
 <div class="page">
 <div class="controls">
 <div class="row" id="motions"></div>
+<div class="row" id="bodies"></div>
+<div class="row" id="sources"></div>
 <div class="row" id="cams"></div>
 <div class="row" id="opts"></div>
 </div>
@@ -54,15 +56,19 @@
 <section class="info"><h2 id="name"></h2><div id="plan" class="legend"></div><ul class="cp" id="cp"></ul><div class="legend" id="note"></div></section>
 </div>
 <script type="module">
-import { EXERCISES } from '../src/data/exercises.js?v=v-f357ae6633bc';
-import { motion3dFor } from '../src/data/motions3d.js?v=v-f357ae6633bc';
-import { createStickman } from '../src/ui/components/stickman.js?v=v-f357ae6633bc';
+import { EXERCISES } from '../src/data/exercises.js?v=v-bf173709d19a';
+import { motion3dFor } from '../src/data/motions3d.js?v=v-bf173709d19a';
+import { videoMotionFor } from '../src/data/motions-video.js?v=v-bf173709d19a';
+import { createStickman } from '../src/ui/components/stickman.js?v=v-bf173709d19a';
 // 3D 쪽(three·import map 이 필요한 것)은 아래 try 안에서 불러온다 — 못 불러오면 막대 그림으로 대신 보여 주기 위해
 let BASE_FACTOR = 2, SLOW_FACTOR = 4;
 
 const TRY = ['J03', 'J01', 'S05'];
 const $ = id => document.getElementById(id);
-const state = { ex: TRY[0], cam: null, slow: false, mirror: false, theme: 'day' };
+const state = { ex: TRY[0], cam: null, slow: false, mirror: false, theme: 'day', body: 'doll', source: 'video' }; // 몸은 지금 인형(가족 결정 2026-10-26)
+const exOf = () => EXERCISES.find(x => x.id === state.ex);
+// 영상에서 뽑은 동작이 있으면 그것, 없거나 '손으로 만듦'을 고르면 지금 동작
+const motionOf = () => (state.source === 'video' && videoMotionFor(exOf().poseId)) || motion3dFor(exOf().poseId);
 const msg = t => { $('msg').textContent = t ?? ''; $('msg').style.display = t ? 'block' : 'none'; };
 
 function buttons(host, items, isOn, onClick) {
@@ -75,21 +81,24 @@ function buttons(host, items, isOn, onClick) {
 
 let viewer = null;
 try {
-  const [pose3d, { createViewer }, { createMannequin }] = await Promise.all([
-    import('../src/domain/pose3d.js'), import('../src/ui/three/viewer.js'), import('../src/ui/three/mannequin.js')]);
+  const [pose3d, { createViewer }, { createMannequin }, { createKidBody }] = await Promise.all([
+    import('../src/domain/pose3d.js'), import('../src/ui/three/viewer.js'), import('../src/ui/three/mannequin.js'), import('../src/ui/three/body.js')]);
   ({ BASE_FACTOR, SLOW_FACTOR } = pose3d);
   viewer = createViewer($('view'));
-  viewer.setModel(createMannequin()); // 3D 인형 하나(다른 모델·꾸미기는 뺌 — 사용자 결정 2026-10-12)
+  // 몸 두 가지를 같은 움직임으로 비교(설계 2026-10-25 §5). 몸은 한 번씩만 만든다(리그가 쉬는 자세를 한 번 잼).
+  const models = { kid: createKidBody(), doll: createMannequin() };
+  let shown = null;
+  viewer.pickBody = key => { if (shown !== key) { shown = key; viewer.setModel(models[key]); } };
 } catch (e) {
   // WebGL 이 안 되면 지금 스틱맨으로
   msg('3D 를 못 그리는 기기라 막대 그림으로 보여 줘요');
   const sm = createStickman($('view'));
-  viewer = { setModel() {}, setCamera() {}, setMirror() {}, setTheme() {}, show: m => sm.show(EXERCISES.find(x => x.id === state.ex).poseId, { slow: state.slow ? SLOW_FACTOR : BASE_FACTOR }), stop: () => sm.stop() };
+  viewer = { setModel() {}, pickBody() {}, setCamera() {}, setMirror() {}, setTheme() {}, show: m => sm.show(EXERCISES.find(x => x.id === state.ex).poseId, { slow: state.slow ? SLOW_FACTOR : BASE_FACTOR }), stop: () => sm.stop() };
 }
 
 function play() {
-  const ex = EXERCISES.find(x => x.id === state.ex);
-  const motion = motion3dFor(ex.poseId);
+  const ex = exOf();
+  const motion = motionOf();
   const cam = state.cam ?? motion.camera;
   viewer.setCamera(cam);
   $('count').textContent = ex.mode === 'reps' ? '0' : '';
@@ -101,15 +110,21 @@ function play() {
   const lv = ex.levels[0];
   $('plan').textContent = ex.mode === 'reps' ? `🔢 횟수: ${lv.reps}회 × ${lv.sets}세트 — 그림 한 번 = 1회 (그림은 실제의 ${state.slow ? '1/4' : '1/2'} 속도)` : ex.mode === 'hold' ? `✋ 버티기: ${lv.workSec}초 × ${lv.sets}세트` : `⏱ 시간: ${lv.workSec}초`;
   $('cp').innerHTML = ex.checkpoints.map((c, i) => `<li>${'①②③'[i]} ${c}</li>`).join('');
-  $('note').textContent = motion.source === 'hand' ? '손으로 다듬은 3D 동작' : '2D 그림 자동 변환(초안)';
+  $('note').textContent = motion.source === 'video'
+    ? `🎬 영상에서 뽑은 움직임: ${motion.from.channel} 영상 ${motion.from.start}~${motion.from.end}초${motion.mirrored ? ' (우리 방향에 맞게 좌우를 뒤집음)' : ''}`
+    : motion.source === 'hand' ? '✋ 손으로 만든 3D 동작' : '2D 그림 자동 변환(초안)';
 }
 
 function render() {
   buttons($('motions'), TRY.map(id => [id, EXERCISES.find(x => x.id === id).name]), k => k === state.ex, k => { state.ex = k; state.cam = null; });
-  buttons($('cams'), [['side', '옆'], ['front', '앞'], ['diag', '비스듬히']], k => k === (state.cam ?? motion3dFor(EXERCISES.find(x => x.id === state.ex).poseId).camera), k => { state.cam = k; });
+  buttons($('bodies'), [['kid', '🧍 새 사람형'], ['doll', '🪆 지금 인형']], k => k === state.body, k => { state.body = k; });
+  const hasVideo = !!videoMotionFor(exOf().poseId);
+  buttons($('sources'), hasVideo ? [['video', '🎬 영상에서 뽑은 움직임'], ['hand', '✋ 손으로 만든 움직임']] : [], k => k === state.source, k => { state.source = k; });
+  buttons($('cams'), [['side', '옆'], ['front', '앞'], ['diag', '비스듬히']], k => k === (state.cam ?? motionOf().camera), k => { state.cam = k; });
   buttons($('opts'), [['slow', '🐢 더 느리게'], ['mirror', '🪞 거울'], ['day', '☀ 기본'], ['night', '🌙 야간'], ['sun', '🔆 야외']],
     k => (k === 'slow' && state.slow) || (k === 'mirror' && state.mirror) || k === state.theme,
     k => { if (k === 'slow') state.slow = !state.slow; else if (k === 'mirror') state.mirror = !state.mirror; else state.theme = k; });
+  viewer.pickBody(state.body);
   viewer.setMirror(state.mirror);
   viewer.setTheme(state.theme);
   play();

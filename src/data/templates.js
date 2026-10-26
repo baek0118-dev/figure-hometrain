@@ -1,13 +1,14 @@
 // 고정 세트 — 설계 §2.1, §11.1. 웜업은 장소 무관(모두 서서·조용히), 쿨다운은 장소별.
 
 // 요일 템플릿 — 설계 §5.1. 첫 칸이 그날 집중 블록. 0=일요일(쉬는 날, 원하면 가볍게).
+// 지상 점프는 월·목 2일(72시간 간격) — 빙상에서도 점프하므로 주 2회(훈련 내용 검토 §3, 2026-10-12 승인).
 export const WEEK_TEMPLATES = {
   0: ['flex', 'balance'],
   1: ['jump', 'spin', 'balance', 'flex'],
   2: ['balance', 'spin', 'flex', 'flex'],
-  3: ['jump', 'balance', 'spin', 'flex'],
-  4: ['spin', 'balance', 'flex'],
-  5: ['jump', 'spin', 'balance', 'flex'],
+  3: ['spin', 'balance', 'flex'],
+  4: ['jump', 'spin', 'balance', 'flex'],
+  5: ['balance', 'spin', 'flex'],
   6: ['flex', 'balance', 'spin', 'flex'],
 };
 export const REST_WEEKDAYS = [0];

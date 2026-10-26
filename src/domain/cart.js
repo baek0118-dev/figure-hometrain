@@ -9,6 +9,9 @@ export const MAX_TOTAL_SEC = 50 * 60;
 const copy = plan => ({ ...plan, slots: plan.slots.map(s => ({ ...s })), items: plan.items.map(i => ({ ...i })) });
 const mains = plan => plan.items.filter(i => i.block === 'main');
 
+// 블록 카드용: 블록 k 의 본운동과 plan.items 안 위치
+export const blockItems = (plan, k) => plan.items.flatMap((item, idx) => (item.block === 'main' && item.slot === k ? [{ item, idx }] : []));
+
 export function removeItem(plan, index) {
   const it = plan.items[index];
   if (!it || it.block !== 'main') return { plan, error: 'fixed' };
@@ -31,7 +34,7 @@ export function addItem(plan, exerciseId, { progress } = {}) {
     slot = next.slots.length - 1;
   }
   const item = makeItem(ex, { block: 'main', slot, level: progress?.levels?.[exerciseId] ?? 1, source: 'added', progress });
-  if (contacts([...next.items, item]) > CONTACT_LIMIT) return { plan, error: 'contacts' };
+  if (contacts([...next.items, item]) > (plan.contactLimit ?? CONTACT_LIMIT)) return { plan, error: 'contacts' };
 
   const lastInSlot = next.items.findLastIndex(i => i.block === 'main' && i.slot === slot);
   const lastMain = next.items.findLastIndex(i => i.block === 'main');

@@ -18,13 +18,15 @@ import { createAiClient } from './ai/client.js';
 import { createCoachFlow } from './ai/flow.js';
 
 const params = new URLSearchParams(location.search);
-// 디버그: ?now=2026-10-12T20:30 (시각 고정), ?speed=10 (타이머 배속)
+// 디버그: ?now=2026-10-12T20:30 (시각 고정), ?speed=10 (타이머 배속), ?sandbox=1 (시험 모드: 기록을 따로 — review/ui.html)
 const fixedNow = params.get('now') ? new Date(params.get('now')) : null;
 const speed = Number(params.get('speed')) || 1;
 const nowDate = () => fixedNow ?? new Date();
 const today = () => localDate(nowDate());
 
-const local = createLocalStore();
+const sandbox = params.get('sandbox') === '1';
+const local = createLocalStore(globalThis.localStorage, sandbox ? { prefix: 'yuha-test.' } : {});
+if (sandbox) document.body.insertAdjacentHTML('beforeend', '<div style="position:fixed;right:6px;bottom:6px;z-index:99;padding:2px 8px;border-radius:8px;background:#7e22ce;color:#fff;font:700 13px sans-serif;pointer-events:none">🧪 시험 모드</div>');
 const repo = createRepo(local);
 const audio = createAudio();
 const wake = createWakeLock();
@@ -44,7 +46,7 @@ const coach = createCoachFlow({ ai, repo, local });
 
 const store = createStore({
   screen: 'start', places: repo.settings().places, short: null,
-  plan: null, removed: [], libTab: 'jump', restDismissed: false, useRule: false, aiAvailable: false,
+  plan: null, removed: [], libTab: 'jump', restDismissed: false, useRule: false, aiAvailable: false, restStretch: false,
 });
 
 const screens = Object.fromEntries([...document.querySelectorAll('[data-screen]')].map(el => [el.dataset.screen, el]));
@@ -70,13 +72,15 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 
 // 오늘의 메뉴 (규칙 추천). 시간은 메뉴 길이를 자동으로 바꾸지 않고, 엄마가 고른 '짧게'만 반영.
 function rebuildPlan() {
-  const { places, short } = store.get();
+  // '스트레칭만'·안내 닫기는 그날만 (앱을 켜 둔 채 날짜가 바뀌면 지움)
+  if (store.get().flagsDate !== today()) store.set({ flagsDate: today(), restStretch: false, restDismissed: false, loadDismissed: false, iceDismissed: false });
+  const { places, short, restStretch } = store.get();
   const settings = repo.settings();
   const plan = buildRulePlan({
     date: today(), places,
     quiet: isQuietTime(clockOf(nowDate()), places, settings),
     history: repo.sessions(), progress: repo.progress(), settings,
-    maxTotalSec: short ?? null,
+    maxTotalSec: short ?? null, restStretch,
   });
   // AI 추천이 있으면(그리고 '규칙 추천으로 보기'가 아니면) 지금 조건으로 안전 검사 후 사용
   const aiPlan = coach.planFor({ date: plan.date, places, quiet: plan.quiet, history: repo.sessions(), progress: repo.progress(), settings, rulePlan: plan });
@@ -93,7 +97,7 @@ mountStart(screens.start, {
 });
 
 let mediaP = null;
-const media = () => (mediaP ??= createMediaStore());
+const media = () => (mediaP ??= createMediaStore(sandbox ? { dbName: 'yuha-test-media' } : {}));
 
 const evaluate = mountEvaluate(document.getElementById('modal'), {
   repo,
@@ -118,7 +122,7 @@ mountMenu(screens.menu, {
 });
 
 mountStats(screens.stats, { store, repo, today });
-mountSettings(screens.settings, { store, repo, local, audio, media, ai });
+mountSettings(screens.settings, { store, repo, local, audio, media, ai, today, rebuildPlan });
 
 // 공원에서 끝낸 운동의 AI 추천: 앱을 열 때·인터넷이 돌아올 때 처리
 const drainAi = () => coach.drain().then(() => { if (store.get().plan) rebuildPlan(); }).catch(() => {});
